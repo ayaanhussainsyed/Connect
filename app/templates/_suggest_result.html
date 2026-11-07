@@ -1,76 +1,91 @@
 {% if error %}
-<div role="alert" class="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{{ error }}</div>
+<div role="alert" class="alert alert-error">{{ error }}</div>
 {% elif res %}
 {% set sm = res.summary %}
-<section class="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="sg-name">
-  <div class="flex flex-wrap items-baseline justify-between gap-2">
+<section class="panel overflow-hidden" aria-labelledby="sg-name">
+  <div class="panel-head">
     <div>
-      <h2 id="sg-name" class="text-lg font-semibold">{{ res.info.name }}</h2>
-      <p class="text-sm text-slate-500"><span class="font-mono">{{ res.entity_id }}</span> · {{ res.info.city }} · {{ res.info.segment | replace('_', ' ') }} · {{ res.info.split }}</p>
+      <h2 id="sg-name" class="text-lg font-semibold text-ink-50">{{ res.info.name }}</h2>
+      <p class="mt-0.5 text-xs text-ink-500"><span class="font-mono">{{ res.entity_id }}</span> · {{ res.info.city }} · {{ res.info.segment | replace('_', ' ') }} · {{ res.info.split }}</p>
     </div>
-    <a href="/a1?entity_id={{ res.entity_id }}" class="text-sm text-indigo-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">What Google shows now →</a>
+    <a href="/a1?entity_id={{ res.entity_id }}" class="btn btn-sm">What customers see now →</a>
   </div>
   {% if res.fallback %}
-  <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">The ML engine's predictions file is missing, so these rows come from the baseline.</p>
+  <p class="alert alert-warn mx-5 mt-4">The ML engine's predictions file is missing, so these rows come from Fonecta's baseline.</p>
   {% endif %}
-  <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
-    <div><dt class="text-slate-500">Suggest</dt><dd class="text-lg font-semibold">{{ sm.actions.get('SUGGEST', 0) }}</dd></div>
-    <div><dt class="text-slate-500">Flag</dt><dd class="text-lg font-semibold">{{ sm.actions.get('FLAG', 0) }}</dd></div>
-    <div><dt class="text-slate-500">Stay quiet</dt><dd class="text-lg font-semibold">{{ sm.actions.get('NO_ACTION', 0) }}</dd></div>
-    <div><dt class="text-slate-500">Changed by guardrails</dt><dd class="text-lg font-semibold">{{ sm.downgraded }}</dd></div>
-    <div><dt class="text-slate-500">Dev points</dt><dd class="text-lg font-semibold">{% if sm.dev_rows %}{{ sm.dev_points }} <span class="text-xs font-normal text-slate-500">({{ sm.dev_ok }}/{{ sm.dev_rows }} ✓)</span>{% else %}<span class="text-slate-400">–</span>{% endif %}</dd></div>
+  <dl class="grid grid-cols-2 gap-px bg-ink-800 sm:grid-cols-5">
+    {% for label, value, note in [
+      ('Suggest a change', sm.actions.get('SUGGEST', 0), 'sent to the owner'),
+      ('Ask a person', sm.actions.get('FLAG', 0), 'Fonecta staff check'),
+      ('Stay quiet', sm.actions.get('NO_ACTION', 0), 'already right or unsure'),
+      ('Stopped by safety rules', sm.downgraded, 'see "Why" below'),
+    ] %}
+    <div class="bg-ink-900 px-5 py-4">
+      <dt class="text-xs text-ink-400">{{ label }}</dt>
+      <dd class="mt-1 font-display text-3xl text-ink-50">{{ value }}</dd>
+      <dd class="text-[11px] text-ink-500">{{ note }}</dd>
+    </div>
+    {% endfor %}
+    <div class="col-span-2 bg-ink-900 px-5 py-4 sm:col-span-1">
+      <dt class="text-xs text-ink-400">Dev points</dt>
+      <dd class="mt-1 font-display text-3xl text-ink-50">{% if sm.dev_rows %}{{ sm.dev_points }}{% else %}<span class="text-ink-600">–</span>{% endif %}</dd>
+      <dd class="text-[11px] text-ink-500">{% if sm.dev_rows %}{{ sm.dev_ok }}/{{ sm.dev_rows }} rows right, Fonecta's scorer{% else %}no answer key{% endif %}</dd>
+    </div>
   </dl>
 </section>
 
-<section class="mt-6 rounded-lg border border-slate-200 bg-white" aria-labelledby="sg-table">
-  <h2 id="sg-table" class="border-b border-slate-200 px-5 py-3 text-sm font-semibold">Upcoming special days ({{ res.rows | length }}) · {{ res.engine }} · season {{ res.season }}</h2>
+<section class="panel mt-6 overflow-hidden" aria-labelledby="sg-table">
+  <div class="panel-head">
+    <h2 id="sg-table" class="h-panel">Upcoming special days ({{ res.rows | length }})</h2>
+    <p class="text-xs text-ink-500">{{ 'ML engine' if res.engine == 'ml' else 'Fonecta baseline' }} · season {{ res.season }}</p>
+  </div>
   {% if res.rows %}
   <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+    <table class="tbl">
+      <thead>
         <tr>
-          <th scope="col" class="px-3 py-2 font-medium">Date</th>
-          <th scope="col" class="px-3 py-2 font-medium">Special day</th>
-          <th scope="col" class="px-3 py-2 font-medium">Google shows</th>
-          <th scope="col" class="px-3 py-2 font-medium">Action</th>
-          <th scope="col" class="px-3 py-2 font-medium">P</th>
-          <th scope="col" class="px-3 py-2 font-medium">Why</th>
-          <th scope="col" class="px-3 py-2 font-medium">Dev label</th>
+          <th scope="col">Date</th>
+          <th scope="col">Special day</th>
+          <th scope="col">Customers see</th>
+          <th scope="col">Connect would</th>
+          <th scope="col">Sure</th>
+          <th scope="col">Why</th>
+          <th scope="col">Answer key</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100 align-top">
+      <tbody class="align-top">
         {% for r in res.rows %}
         <tr>
-          <td class="whitespace-nowrap px-3 py-2">{{ r.date | nice_date }}</td>
-          <td class="px-3 py-2">{{ r.day_key | replace('_', ' ') | lower | capitalize }}</td>
-          <td class="whitespace-nowrap px-3 py-2 font-mono">{{ r.shown }}</td>
-          <td class="whitespace-nowrap px-3 py-2">
-            {% if r.action == 'SUGGEST' %}<span class="font-medium text-indigo-700">Suggest</span> <span class="font-mono">{{ r.value }}</span>
-            {% elif r.action == 'FLAG' %}<span class="font-medium text-amber-700">Flag</span>
-            {% else %}<span class="text-slate-500">Stay quiet</span>{% endif %}
-            {% if r.original_action %}<div class="text-xs text-slate-500">was {{ r.original_action | lower }}</div>{% endif %}
-            {% if r.action == 'SUGGEST' and not r.message_ok %}<div class="text-xs text-slate-500">no message</div>{% endif %}
+          <td class="whitespace-nowrap text-ink-300">{{ r.date | nice_date }}</td>
+          <td class="text-ink-100">{{ r.day_key | replace('_', ' ') | lower | capitalize }}</td>
+          <td class="hours whitespace-nowrap text-ink-300">{{ r.shown }}</td>
+          <td class="whitespace-nowrap">
+            {% if r.action == 'SUGGEST' %}<span class="text-ink-400">Suggest</span> <span class="hours font-medium text-signal">{{ r.value }}</span>
+            {% elif r.action == 'FLAG' %}<span class="warn">Ask a person</span>
+            {% else %}<span class="text-ink-500">Stay quiet</span>{% endif %}
+            {% if r.original_action %}<div class="mt-0.5 text-xs text-ink-500">was {{ r.original_action | lower | replace('_', ' ') }}</div>{% endif %}
+            {% if r.action == 'SUGGEST' and not r.message_ok %}<div class="mt-0.5 text-xs text-ink-500">no message (owner opted out)</div>{% endif %}
           </td>
-          <td class="whitespace-nowrap px-3 py-2 tabular-nums">{{ '%.2f' | format(r.probability) if r.probability is not none else '–' }}</td>
-          <td class="min-w-[18rem] px-3 py-2">
-            {% if r.basis %}<span class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700">{{ r.basis }}</span>{% endif %}
+          <td class="hours whitespace-nowrap text-ink-300">{{ '%.0f%%' | format(r.probability * 100) if r.probability is not none else '–' }}</td>
+          <td class="min-w-[18rem]">
+            {% if r.basis %}<span class="tag">{{ basis_text.get(r.basis, r.basis | replace('_', ' ') | lower) }}</span>{% endif %}
             {% if r.evidence %}
-            <ul class="mt-1 space-y-0.5 text-xs text-slate-600">
-              {% for e in r.evidence[:4] %}<li><span class="text-slate-400">{{ e.source }}</span> {{ e.detail }}</li>{% endfor %}
+            <ul class="mt-1.5 space-y-0.5 text-xs text-ink-400">
+              {% for e in r.evidence[:4] %}<li>{{ e.detail }} <span class="text-ink-600">· {{ e.source }}</span></li>{% endfor %}
             </ul>
             {% endif %}
             {% if r.guardrail_notes %}
-            <ul class="mt-1 space-y-0.5 text-xs text-amber-800">
-              {% for n in r.guardrail_notes %}<li>{{ n }}</li>{% endfor %}
+            <ul class="mt-1.5 space-y-0.5 text-xs text-amber-200">
+              {% for n in r.guardrail_notes %}<li>Safety rule: {{ n }}</li>{% endfor %}
             </ul>
             {% endif %}
           </td>
-          <td class="whitespace-nowrap px-3 py-2">
+          <td class="whitespace-nowrap">
             {% if r.label %}
-              <span class="{{ 'text-emerald-700' if r.label.ok else ('text-rose-700' if r.label.points < 0 else 'text-slate-500') }}">{{ '✓' if r.label.ok else ('✗' if r.label.points < 0 else '○') }}</span>
-              <span class="font-mono">{{ r.label.truth_hours }}</span>
-              <div class="text-xs text-slate-500">{{ r.label.outcome | replace('_', ' ') }} · {{ '%+.2f' | format(r.label.points) }}</div>
-            {% else %}<span class="text-slate-400">–</span>{% endif %}
+              <span class="{{ 'ok' if r.label.ok else ('bad' if r.label.points < 0 else 'text-ink-500') }}">{{ '✓' if r.label.ok else ('✗' if r.label.points < 0 else '○') }}</span>
+              <span class="hours text-ink-200">{{ r.label.truth_hours }}</span>
+              <div class="mt-0.5 text-xs text-ink-500">{{ r.label.outcome | replace('_', ' ') }} · {{ '%+.2f' | format(r.label.points) }}</div>
+            {% else %}<span class="text-ink-600">–</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -78,7 +93,7 @@
     </table>
   </div>
   {% else %}
-  <p class="px-5 py-4 text-sm text-slate-500">No target special days for this business in that season.</p>
+  <p class="px-5 py-4 text-sm text-ink-500">No special days to check for this business in that season.</p>
   {% endif %}
 </section>
 {% endif %}

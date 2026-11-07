@@ -1,8 +1,8 @@
-{% if error %}<span role="alert" class="text-rose-700">{{ error }}</span>
-{% elif undone %}<span class="text-slate-700">Undone: your usual hours are back.</span>
+{% if error %}<span role="alert" class="bad">{{ error }}</span>
+{% elif undone %}<span class="text-ink-200">Undone: your usual hours are back.</span>
 {% elif em %}
-<span class="text-emerald-800">✓ Saved: closed {{ em.dates | join(', ') }}.</span>
+<span class="ok">✓ Saved: closed {{ em.dates | join(', ') }}.</span>
 {% for w in em.where_it_shows if w.status == 'LIVE' and w.typical_seconds <= 3600 %}{% if loop.first %} Shows on {% endif %}{{ w.publisher }} {{ w.eta_text }}{% if not loop.last %}, {% endif %}{% endfor %}.
-<span class="text-slate-500">Slower apps may not catch a same-day change.</span>
-<button hx-post="/em/{{ undo_token }}/undo" hx-target="#closed-today" class="ml-2 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Undo</button>
+<span class="text-ink-500">Slower apps may not catch a same-day change.</span>
+<button hx-post="/em/{{ undo_token }}/undo" hx-target="#closed-today" class="btn btn-sm ml-2">Undo</button>
 {% endif %}

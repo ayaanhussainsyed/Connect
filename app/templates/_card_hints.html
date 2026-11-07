@@ -1,12 +1,11 @@
 {% if p %}
-<p class="text-sm text-slate-700">
+<p class="text-sm text-ink-200">
   {{ p.date | nice_date }}:
-  {% if p.answer == 'closed' %}<strong>closed</strong>{% elif p.answer == 'regular' %}regular hours <span class="font-mono">{{ p.hours }}</span>{% else %}other hours: type them in the box below{% endif %}.
-  <span class="text-xs text-slate-500">Saved when you press Approve.</span>
+  {% if p.answer == 'closed' %}<strong class="text-ink-50">closed</strong>{% elif p.answer == 'regular' %}regular hours <span class="hours">{{ p.hours }}</span>{% else %}other hours: type them below{% endif %}.
+  <span class="text-xs text-ink-500">Saved when you press Approve.</span>
 </p>
 {% if p.answer == 'special' %}
-<label for="answer_hours" class="mt-2 block text-xs font-medium text-slate-600">Hours on {{ p.date | nice_date }}</label>
-<input id="answer_hours" name="answer_hours" form="card-form" autocomplete="off" placeholder="e.g. 10-14"
-       class="mt-1 w-36 rounded-md border border-slate-300 px-2 py-1 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+<label for="answer_hours" class="label mt-3">Hours on {{ p.date | nice_date }}</label>
+<input id="answer_hours" name="answer_hours" form="card-form" autocomplete="off" placeholder="e.g. 10-14" class="field hours mt-1.5 max-w-[12rem]">
 {% endif %}
 {% endif %}

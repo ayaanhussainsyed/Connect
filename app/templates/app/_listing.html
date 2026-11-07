@@ -1,0 +1,61 @@
+{% if error %}
+<p role="alert" class="alert alert-error m-6">Couldn’t read the listing: {{ error }}</p>
+{% else %}
+<div class="px-6 pb-2 pt-6 text-center">
+  {% if now.open %}
+  <span class="inline-block rounded-full border-2 border-neon px-6 py-1 font-sign text-2xl font-bold uppercase tracking-[0.22em] neon-on shadow-[0_0_10px_#ff5b3d,inset_0_0_8px_rgba(255,91,61,.45)]">Open</span>
+  {% else %}
+  <span class="inline-block rounded-full border-2 border-ink-600 px-6 py-1 font-sign text-2xl font-bold uppercase tracking-[0.22em] neon-off">Open</span>
+  {% endif %}
+  <p class="mt-3 text-sm text-ink-400">
+    {% if now.open is none %}Today: <span class="hours text-ink-200">{{ now.today }}</span>
+    {% elif now.open %}Open now · today <span class="hours text-ink-200">{{ now.today }}</span>
+    {% elif now.today != 'closed' %}Closed now · today <span class="hours text-ink-200">{{ now.today }}</span>
+    {% else %}Closed all day today{% endif %}
+    {% if now.special %}<span class="text-gold-200"> (special hours)</span>{% endif %}
+  </p>
+  {% if reopen %}<p class="alert alert-warn mt-3">Shown as temporarily closed until {{ reopen | nice_date }}.</p>{% endif %}
+</div>
+
+<div class="px-6 py-5">
+  <p class="eyebrow">Opening hours</p>
+  <dl class="mt-3 space-y-1.5">
+    {% for d, h in week %}
+    <div class="leaders vinyl text-[17px]"><dt class="w-10">{{ d }}</dt><span class="dots"></span><dd class="tabular-nums {{ 'text-ink-500' if h == 'closed' else '' }}">{{ h | replace(':00', '') | replace('-', '–') }}</dd></div>
+    {% endfor %}
+  </dl>
+</div>
+
+<div class="border-t border-ink-800 px-6 py-5">
+  <p class="eyebrow">Holiday hours</p>
+  {% if holidays %}
+  <ul class="mt-3 space-y-1.5">
+    {% for d, h in holidays.items() %}
+    <li class="leaders text-[15px]"><span class="text-ink-300">{{ d | nice_date }}</span><span class="dots"></span><span class="hours {{ 'text-ink-400' if h == 'closed' else 'text-gold-200' }}">{{ 'regular hours' if h == 'REGULAR' else h }}</span></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="mt-2 text-[15px] text-ink-500">None set. On holidays, apps show your weekly hours.</p>{% endif %}
+</div>
+
+<div class="border-t border-ink-800 px-6 py-5">
+  <p class="eyebrow">Shows on</p>
+  {% set live = where | selectattr('status', 'equalto', 'LIVE') | list %}
+  {% set other = where | rejectattr('status', 'equalto', 'LIVE') | list %}
+  <ul class="mt-3 space-y-1.5 text-[15px]">
+    {% for w in live[:7] %}
+    <li class="leaders"><span class="text-ink-100">{{ w.publisher }}</span><span class="dots"></span><span class="font-sign text-sm uppercase tracking-[0.08em] text-ink-400">{{ w.eta_text }}</span></li>
+    {% endfor %}
+  </ul>
+  {% if live[7:] or other %}
+  <details class="mt-3">
+    <summary class="cursor-pointer text-sm text-ink-400 hover:text-ink-100">{{ live[7:] | length }} more{% if other %} · {{ other | length }} not connected{% endif %} ▸</summary>
+    <ul class="mt-2 space-y-1.5 text-[15px]">
+      {% for w in live[7:] + other %}
+      <li class="leaders {{ '' if w.status == 'LIVE' else 'text-ink-600' }}"><span>{{ w.publisher }}</span><span class="dots"></span><span class="font-sign text-sm uppercase tracking-[0.08em]">{{ w.eta_text }}</span></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  <p class="mt-3 text-xs text-ink-600">Times are how fast each app usually picks up a change.</p>
+</div>
+{% endif %}

@@ -1,0 +1,173 @@
+{% macro again(label='Check again') %}
+<form hx-post="/app/check" hx-target="#needs" hx-swap="innerHTML" hx-disabled-elt="find button" class="inline">
+  <input type="hidden" name="b" value="{{ eid }}">
+  <button type="submit" class="btn">{{ label }}</button>
+</form>
+{% endmacro %}
+{% macro note(title, body='', tilt='-0.4deg') %}
+<div class="paper px-7 pb-7 pt-9" style="transform: rotate({{ tilt }})">
+  <span class="tape -top-3 left-8 rotate-[-5deg]"></span>
+  <p class="font-hand text-2xl font-bold">{{ title }}</p>
+  {% if body %}<p class="mt-2 max-w-prose leading-6 text-paper-faint">{{ body }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{% if notice %}<div role="alert" class="alert alert-warn mb-4">{{ notice }}</div>{% endif %}
+
+{% if state == 'open' %}
+{% set n = card['items'] | length + (1 if card.question else 0) %}
+<form id="card-form" hx-post="/app/decide" hx-target="#needs" hx-swap="innerHTML" hx-disabled-elt="find button[type=submit]">
+  <input type="hidden" name="card_id" value="{{ card.id }}">
+  <input type="hidden" name="b" value="{{ eid }}">
+  <div class="paper px-6 pb-6 pt-9 sm:px-8" style="transform: rotate(-0.3deg)">
+    <span class="tape -top-3 left-10 rotate-[-5deg]"></span>
+    <span class="tape -top-3 right-10 rotate-[4deg]"></span>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="font-hand text-[1.7rem] font-bold leading-tight">{{ n }} {{ 'day needs' if n == 1 else 'days need' }} your OK</p>
+        <p class="mt-1 text-[15px] text-paper-faint">Customers would see the wrong hours. Nothing changes until you choose.</p>
+      </div>
+      {% if card.approve_by %}<span class="stamp border-[#9b2c1c] text-[#9b2c1c]">Answer by {{ card.approve_by | nice_date }}</span>{% endif %}
+    </div>
+
+    {% if errors and errors.get('_') %}<p role="alert" class="mt-4 font-bold text-[#9b2c1c]">{{ errors['_'] }}</p>
+    {% elif errors %}<p role="alert" class="mt-4 font-bold text-[#9b2c1c]">Nothing was saved yet. Check the days marked below.</p>{% endif %}
+
+    <ul class="mt-6 divide-y divide-dashed divide-paper-faint/40 border-y border-dashed border-paper-faint/40">
+      {% for i in card['items'] %}
+      <li class="py-4">
+        <div class="grid items-start gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)_minmax(0,10.5rem)]">
+          <div>
+            <p class="font-sign text-2xl font-bold leading-none">{{ i.date | nice_date | replace(' 2026', '') | replace(' 2027', '') }}</p>
+            <p class="mt-1 text-sm text-paper-faint">{{ i.day_key | replace('_', ' ') | lower | capitalize }}</p>
+          </div>
+          <div class="text-[15px]">
+            <p class="text-paper-faint">Customers see <span class="hours line-through decoration-[#9b2c1c] decoration-2">{{ i.shown }}</span></p>
+            <details class="group mt-1">
+              <summary class="cursor-pointer select-none text-sm font-bold hover:underline">Why: {{ basis_text.get(i.basis, i.basis | replace('_', ' ') | lower) }} <span class="group-open:hidden">▸</span></summary>
+              <ul class="mt-1.5 space-y-0.5 text-sm text-paper-faint">
+                {% for e in i.evidence %}<li>{{ e.detail }}</li>{% endfor %}
+                {% if i.probability is not none %}<li>Confidence {{ '%.0f' | format(i.probability * 100) }}%</li>{% endif %}
+              </ul>
+            </details>
+          </div>
+          <div>
+            <label for="hours_{{ i.date }}" class="sr-only">Hours on {{ i.date }}</label>
+            <input id="hours_{{ i.date }}" name="hours_{{ i.date }}" value="{{ i.value }}" autocomplete="off" title="Type to change, e.g. 10-14 or closed"
+                   class="w-full rounded-md border-2 {{ 'border-[#9b2c1c]' if errors.get(i.date) else 'border-paper-ink/25' }} bg-white/40 px-2.5 py-1.5 font-mono text-[15px] font-medium text-paper-ink focus:border-paper-ink focus:outline-none">
+            <label class="mt-1.5 flex items-center gap-1.5 text-sm text-paper-faint">
+              <input type="checkbox" name="skip_{{ i.date }}" value="1" class="h-4 w-4 accent-[#211e18]"> Keep as it is
+            </label>
+          </div>
+        </div>
+        {% if i.flip_tick_required %}
+        <label class="mt-3 flex items-start gap-2 rounded-md border-2 border-dashed border-paper-ink/30 p-2.5 text-[15px] sm:ml-[9.25rem]">
+          <input type="checkbox" name="tick_{{ i.date }}" value="1" class="mt-0.5 h-4 w-4 accent-[#211e18]">
+          <span>Yes, {{ 'closed all day' if i.value == 'closed' else 'open ' ~ i.value }} on this day</span>
+        </label>
+        {% endif %}
+        {% if errors.get(i.date) %}<p role="alert" class="mt-2 font-bold text-[#9b2c1c] sm:ml-[9.25rem]">{{ errors[i.date] }}</p>{% endif %}
+      </li>
+      {% endfor %}
+
+      {% if card.question %}
+      {% set q = card.question %}
+      <li class="py-4">
+        <div class="grid items-start gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+          <div>
+            <p class="font-sign text-2xl font-bold leading-none">{{ q.date | nice_date | replace(' 2026', '') | replace(' 2027', '') }}</p>
+            <p class="mt-1 text-sm text-paper-faint">{{ (q.day_key or '') | replace('_', ' ') | lower | capitalize }}</p>
+          </div>
+          <fieldset hx-get="/app/preview?card_id={{ card.id }}" hx-trigger="change" hx-target="#hints" hx-include="this">
+            <legend class="text-[15px]"><span class="font-hand text-lg font-bold">We’re not sure about this one.</span> How are you open? <span class="text-paper-faint">(customers see <span class="hours">{{ q.shown }}</span>)</span></legend>
+            <div class="mt-2.5 flex flex-wrap gap-2 text-[15px]">
+              {% for val, text in [('closed', 'Closed'), ('regular', 'Regular hours'), ('special', 'Other hours')] %}
+              <label class="flex cursor-pointer items-center gap-2 rounded-full border-2 border-paper-ink/30 px-3.5 py-1 transition-colors hover:border-paper-ink has-[:checked]:border-paper-ink has-[:checked]:bg-paper-ink has-[:checked]:text-paper has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-paper-ink">
+                <input type="radio" name="answer" value="{{ val }}" class="sr-only"> {{ text }}{% if val == 'regular' %} <span class="hours text-sm opacity-70">{{ q.regular }}</span>{% endif %}
+              </label>
+              {% endfor %}
+            </div>
+            <div id="hints" class="mt-2.5" aria-live="polite"></div>
+          </fieldset>
+        </div>
+      </li>
+      {% endif %}
+    </ul>
+    <p class="mt-4 text-sm text-paper-faint">To change a day, type new hours in its box, e.g. <span class="hours">10-14</span> or <span class="hours">closed</span>.</p>
+  </div>
+
+  <div class="mt-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+    <button type="submit" name="action" value="approve" class="btn btn-primary btn-lg">Approve</button>
+    <button type="submit" name="action" value="approve_every_year" class="btn btn-primary btn-lg">Approve + every year</button>
+    <button type="submit" name="action" value="decline" class="btn btn-lg">No thanks</button>
+  </div>
+  <p class="mt-3 text-sm leading-6 text-ink-500">Approve puts these hours on Google, Apple Maps, AI assistants and 30+ other apps. “Every year” does the same holidays automatically from now on, at least 14 days ahead, and tells you each time. Undo any time.</p>
+</form>
+
+{% elif state == 'applied' %}
+{% set r = result %}
+<div class="paper px-7 pb-7 pt-9" style="transform: rotate(0.3deg)">
+  <span class="tape -top-3 left-10 rotate-[-5deg]"></span>
+  <span class="stamp absolute right-6 top-6 border-[#9b2c1c] text-base text-[#9b2c1c]">Posted everywhere</span>
+  <p class="font-hand text-[1.7rem] font-bold">Updated ✓</p>
+  <ul class="mt-4 space-y-1.5">
+    {% for d, h in (r.get('applied') or {}).items() %}
+    <li class="leaders text-[16px]"><span>{{ d | nice_date }}</span><span class="dots !border-paper-faint/50"></span><span class="hours font-medium">{{ h }}</span></li>
+    {% endfor %}
+  </ul>
+  {% if r.get('permission') %}<p class="mt-4 text-[15px]"><strong>Every year:</strong> {{ r.permission.scope.text }}</p>{% endif %}
+  {% if r.get('declined') %}<p class="mt-2 text-sm text-paper-faint">Kept as they were: {{ r.declined | join(', ') }}.</p>{% endif %}
+  {% if r.get('cancelled') %}<p class="mt-2 text-sm text-paper-faint">Not changed because you edited them yourself meanwhile: {{ r.cancelled | join(', ') }}.</p>{% endif %}
+  {% if r.get('error') %}<p role="alert" class="mt-3 font-bold text-[#9b2c1c]">{{ r.error }}. Your answer is saved; we’ll retry.</p>{% endif %}
+</div>
+{% if r.get('where_it_shows') %}
+<div class="mt-8">
+  <p class="h-panel">Updated everywhere</p>
+  <p class="mt-1 text-sm text-ink-500">Each app picks up the change at its own speed.</p>
+  <ul class="mt-4 grid gap-x-10 gap-y-2 sm:grid-cols-2">
+    {% for w in r.where_it_shows %}{% set live = w.status == 'LIVE' %}
+    <li class="leaders text-[15px] {{ '' if live else 'text-ink-600' }}"><span>{{ w.publisher }}</span><span class="dots"></span><span class="font-sign uppercase tracking-[0.08em] {{ 'text-gold-200' if live else '' }}">{{ w.eta_text }}</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+<div class="mt-7 flex flex-wrap gap-3">
+  <form hx-post="/app/undo" hx-target="#needs" hx-swap="innerHTML" hx-confirm="Put back the hours your listing showed before?">
+    <input type="hidden" name="card_id" value="{{ card.id }}"><input type="hidden" name="b" value="{{ eid }}">
+    <button type="submit" class="btn">Undo</button>
+  </form>
+  {{ again() }}
+</div>
+
+{% elif state == 'undone' %}
+{{ note('Undone', 'Your listing shows what it did before' ~ (', except days you changed yourself' if result.get('undo', {}).get('left_alone') else '') ~ '. Any “every year” permission from that answer is cancelled.') }}
+<div class="mt-6">{{ again() }}</div>
+
+{% elif state == 'closed' %}
+{% set r = result %}
+{% if r.get('declined') and not r.get('applied') %}
+{{ note('No changes made', 'OK, your hours stay as they are. Connect won’t suggest the same thing again.') }}
+{% else %}
+{{ note('Answer received', 'This suggestion is ' ~ (card.status | lower | replace('_', ' ')) ~ '.') }}
+{% endif %}
+{% if r.get('blocked') %}<p class="mt-4 text-sm text-ink-400">Not changed: {% for d, why in r.blocked.items() %}{{ d }} ({{ why }}){% if not loop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+<div class="mt-6">{{ again() }}</div>
+
+{% elif state == 'quiet' %}
+{% set msg = reason or '' %}
+{% if 'right hours' in msg %}{% set why = 'Google and every other app already show the right hours on every coming special day.' %}
+{% elif 'flagged' in msg %}{% set why = 'Something looks unusual (has the business closed?), so a Fonecta person will check it with you instead.' %}
+{% elif 'opted out' in msg %}{% set why = 'You have turned off suggestions, so Connect won’t contact you.' %}
+{% elif 'no target days' in msg %}{% set why = 'There are no special days coming up.' %}
+{% else %}{% set why = msg %}{% endif %}
+{{ note('Nothing needs you right now ✓', why, '0.4deg') }}
+<div class="mt-6">{{ again() }}</div>
+
+{% elif state == 'unchecked' %}
+{{ note('Let’s check your coming holidays', 'Connect compares what customers will see on each special day with what you would really do.') }}
+<div class="mt-6">{{ again('Check now') }}</div>
+
+{% elif state == 'error' %}
+{{ note('Couldn’t check your listing', reason) }}
+<div class="mt-6">{{ again('Try again') }}</div>
+{% endif %}
