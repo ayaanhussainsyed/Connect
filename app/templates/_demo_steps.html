@@ -1,16 +1,19 @@
-{% if no_card %}<p class="mb-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">No message: {{ no_card.payload.reason }}</p>{% endif %}
-<ol class="space-y-3">
+{% if no_card %}<p class="alert mb-4 border-ink-700 bg-ink-850 text-ink-200">No message: {{ no_card.payload.reason }}</p>{% endif %}
+<ol class="relative">
   {% for s in steps %}
-  <li class="flex gap-3">
-    <span class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-semibold {{ 'bg-emerald-600 text-white' if s.done else 'bg-slate-200 text-slate-500' }}">{{ loop.index }}</span>
-    <div>
-      <p class="text-sm font-medium {{ '' if s.done else 'text-slate-400' }}">{{ s.label }}</p>
-      <p class="text-xs text-slate-500">{{ s.detail if s.detail else s.desc }}</p>
+  <li class="relative flex gap-3.5 pb-5 last:pb-0">
+    {% if not loop.last %}<span class="absolute left-[13px] top-7 h-[calc(100%-1.5rem)] w-px {{ 'bg-signal/50' if s.done else 'bg-ink-700' }}" aria-hidden="true"></span>{% endif %}
+    <span class="relative flex h-7 w-7 flex-none items-center justify-center rounded-full font-mono text-[11px] {{ 'bg-signal text-black' if s.done else 'border border-ink-600 text-ink-500' }}">{{ '✓' if s.done else loop.index }}</span>
+    <div class="min-w-0 pt-0.5">
+      <p class="text-sm font-medium {{ 'text-ink-50' if s.done else 'text-ink-500' }}">{{ s.label }}</p>
+      <p class="mt-0.5 break-words text-xs leading-5 {{ 'text-ink-300' if s.done else 'text-ink-500' }}">{{ s.detail if s.detail else s.desc }}</p>
     </div>
   </li>
   {% endfor %}
 </ol>
 {% if events %}
-<details class="mt-4"><summary class="cursor-pointer text-xs text-slate-500">Audit events ({{ events | length }})</summary>
-<ul class="mt-1 space-y-0.5 font-mono text-[11px] text-slate-600">{% for e in events %}<li>#{{ e.seq }} {{ e.event_type }}</li>{% endfor %}</ul></details>
+<details class="mt-5 border-t border-ink-800 pt-3">
+  <summary class="cursor-pointer text-xs text-ink-400 hover:text-ink-100">Audit events ({{ events | length }}) ▸</summary>
+  <ul class="mt-2 space-y-0.5 font-mono text-[11px] text-ink-400">{% for e in events %}<li><span class="text-ink-600">#{{ e.seq }}</span> {{ e.event_type }}</li>{% endfor %}</ul>
+</details>
 {% endif %}

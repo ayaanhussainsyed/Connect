@@ -60,6 +60,7 @@ def demo():
 @bp.post("/demo/send")
 def demo_send():
     eid, engine, target = _params()
+    channel = (request.values.get("channel") or "").strip().upper() or None
     try:
         card = season.build_card(eid, 2026, engine, target=target)
     except season.NoCard as e:
@@ -67,6 +68,9 @@ def demo_send():
         return _phone(eid, note=f"No message: {e}")
     except Exception as e:  # noqa: BLE001 - e.g. the mock is not running
         return _phone(eid, note=f"Could not build the card: {e}")
+    if channel in ("WHATSAPP", "EMAIL", "SMS", "OUTBOX"):
+        card.channel = channel
+        dbmod.save(card)
     season.send_card(card, base_url=request.host_url)
     return _phone(eid)
 

@@ -2,53 +2,56 @@
 {% block title %}{{ name }} · saved{% endblock %}
 {% block content %}
 {% set r = result or {} %}
-<section class="rounded-lg border border-slate-200 bg-white p-5" aria-labelledby="done-h">
-  {% if notice %}<div role="alert" class="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{{ notice }}</div>{% endif %}
+<section aria-labelledby="done-h" class="rise">
+  {% if notice %}<div role="alert" class="alert alert-warn mb-6">{{ notice }}</div>{% endif %}
+  <p class="eyebrow">{{ name }}</p>
 
   {% if card.status == 'UNDONE' %}
-    <h1 id="done-h" class="text-lg font-semibold">Undone</h1>
+    <h1 id="done-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">Undone</h1>
     {% set u = r.get('undo') or {} %}
-    <p class="mt-1 text-sm text-slate-600">We put back what your listing showed before{% if u.get('restored') %} for {{ u.restored | length }} date(s){% endif %}. Any "every year" permission from this answer is cancelled.</p>
-    {% if u.get('left_alone') %}<p class="mt-2 text-sm text-slate-600">Left as you changed them: {{ u.left_alone | join(', ') }}.</p>{% endif %}
+    <p class="mt-3 text-[15px] leading-7 text-ink-300">We put back what your listing showed before{% if u.get('restored') %} for {{ u.restored | length }} date(s){% endif %}. Any "every year" permission from this answer is cancelled.</p>
+    {% if u.get('left_alone') %}<p class="mt-2 text-sm text-ink-400">Left as you changed them: {{ u.left_alone | join(', ') }}.</p>{% endif %}
   {% elif r.get('applied') %}
-    <h1 id="done-h" class="text-lg font-semibold text-emerald-800">✓ Saved</h1>
-    <ul class="mt-2 space-y-1 text-sm">
-      {% for d, h in r.applied.items() %}<li><span class="font-medium">{{ d | nice_date }}</span> <span class="font-mono">{{ h }}</span></li>{% endfor %}
+    <h1 id="done-h" class="mt-3 flex items-center gap-3 font-display text-4xl text-ink-50 sm:text-5xl"><span class="ok" aria-hidden="true">✓</span> Saved</h1>
+    <ul class="mt-6 divide-y divide-ink-800 border-y border-ink-800">
+      {% for d, h in r.applied.items() %}
+      <li class="flex items-baseline justify-between gap-3 py-3"><span class="text-ink-200">{{ d | nice_date }}</span><span class="hours text-signal">{{ h }}</span></li>
+      {% endfor %}
     </ul>
     {% if r.get('where_it_shows') %}
-    <h2 class="mt-5 text-sm font-semibold">Where it shows</h2>
-    <div class="overflow-x-auto">
-      <table class="mt-2 min-w-full text-sm">
-        <tbody class="divide-y divide-slate-100">
-          {% for w in r.where_it_shows %}
-          <tr>
-            <td class="py-1.5 pr-4">{{ w.publisher }}</td>
-            <td class="whitespace-nowrap py-1.5 pr-4 {{ 'text-slate-900' if w.status == 'LIVE' else 'text-slate-400' }}">{{ w.eta_text }}</td>
-            <td class="whitespace-nowrap py-1.5 text-xs text-slate-500">{% if w.expected_live_at %}by {{ w.expected_live_at[:16] | replace('T', ' ') }} UTC{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <p class="mt-2 text-xs text-slate-500">{{ r.where_it_shows[0].source }}</p>
+    <h2 class="mt-10 text-sm font-semibold text-ink-50">Where it shows</h2>
+    <p class="mt-1 text-xs text-ink-500">Each app picks up the change at its own speed.</p>
+    <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+      {% for w in r.where_it_shows %}
+      {% set live = w.status == 'LIVE' %}
+      <li class="flex items-center justify-between gap-3 rounded-xl border px-4 py-3 {{ 'border-ink-700 bg-ink-900' if live else 'border-ink-800 bg-transparent' }}">
+        <span class="flex items-center gap-2.5 text-sm {{ 'text-ink-50' if live else 'text-ink-500' }}"><span class="h-1.5 w-1.5 rounded-full {{ 'bg-signal' if live else 'bg-ink-600' }}" aria-hidden="true"></span>{{ w.publisher }}</span>
+        <span class="text-right">
+          <span class="block text-sm {{ 'text-ink-200' if live else 'text-ink-500' }}">{{ w.eta_text }}</span>
+          {% if w.expected_live_at %}<span class="block font-mono text-[10px] text-ink-500">by {{ w.expected_live_at[:16] | replace('T', ' ') }} UTC</span>{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-3 text-xs text-ink-500">{{ r.where_it_shows[0].source }}</p>
     {% endif %}
-    {% if r.get('permission') %}<p class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">Every year: {{ r.permission.scope.text }} ({{ r.permission.scope.day_keys | join(', ') | replace('_', ' ') | lower }})</p>{% endif %}
+    {% if r.get('permission') %}<p class="alert mt-6 border-ink-700 bg-ink-900 text-ink-200"><span class="font-medium text-ink-50">Every year:</span> {{ r.permission.scope.text }} ({{ r.permission.scope.day_keys | join(', ') | replace('_', ' ') | lower }})</p>{% endif %}
   {% elif r.get('declined') %}
-    <h1 id="done-h" class="text-lg font-semibold">No changes</h1>
-    <p class="mt-1 text-sm text-slate-600">OK, we won't change anything. You can edit your hours in Connect any time.</p>
+    <h1 id="done-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">No changes</h1>
+    <p class="mt-3 text-[15px] leading-7 text-ink-300">OK, we won't change anything. You can edit your hours in Connect any time.</p>
   {% else %}
-    <h1 id="done-h" class="text-lg font-semibold">Thanks</h1>
-    <p class="mt-1 text-sm text-slate-600">This card is {{ card.status | lower | replace('_', ' ') }}.</p>
+    <h1 id="done-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">Thanks</h1>
+    <p class="mt-3 text-[15px] leading-7 text-ink-300">This card is {{ card.status | lower | replace('_', ' ') }}.</p>
   {% endif %}
 
-  {% if r.get('cancelled') %}<p class="mt-4 text-sm text-slate-600">Not changed, because the listing was changed after we asked: {{ r.cancelled | join(', ') }}.</p>{% endif %}
-  {% if r.get('blocked') %}<p class="mt-2 text-sm text-slate-600">Not changed: {% for d, why in r.blocked.items() %}{{ d }} ({{ why }}){% if not loop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
-  {% if r.get('declined') and r.get('applied') %}<p class="mt-2 text-sm text-slate-600">Left as they are: {{ r.declined | join(', ') }}.</p>{% endif %}
-  {% if r.get('error') %}<p role="alert" class="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{{ r.error }}. Your answer is saved; we'll retry.</p>{% endif %}
+  {% if r.get('cancelled') %}<p class="mt-6 text-sm text-ink-400">Not changed, because the listing was changed after we asked: {{ r.cancelled | join(', ') }}.</p>{% endif %}
+  {% if r.get('blocked') %}<p class="mt-2 text-sm text-ink-400">Not changed: {% for d, why in r.blocked.items() %}{{ d }} ({{ why }}){% if not loop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+  {% if r.get('declined') and r.get('applied') %}<p class="mt-2 text-sm text-ink-400">Left as they are: {{ r.declined | join(', ') }}.</p>{% endif %}
+  {% if r.get('error') %}<p role="alert" class="alert alert-error mt-6">{{ r.error }}. Your answer is saved; we'll retry.</p>{% endif %}
 
   {% if card.status in ('APPLIED', 'CONFIRMED') %}
-  <form method="post" action="/c/{{ token }}/undo" class="mt-6">
-    <button type="submit" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Undo</button>
+  <form method="post" action="/c/{{ token }}/undo" class="mt-8">
+    <button type="submit" class="btn">Undo</button>
   </form>
   {% endif %}
 </section>

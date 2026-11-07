@@ -17,7 +17,7 @@ from datetime import date
 from functools import lru_cache
 from urllib.parse import urlencode
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, render_template, request, url_for
 
 from cs import data, display, export, guardrails
 from cs.suggest import ENGINES, engine_adapter, get_suggestions
@@ -139,11 +139,6 @@ def _result(entity_id: str, d: str, as_of: str) -> dict:
         "label": _label_view(display.label_for(entity_id, d, as_of), ex["shown"]),
         "upcoming": _upcoming(entity_id, as_of, d),
     }
-
-
-@app.get("/")
-def index():
-    return redirect(url_for("a1"))
 
 
 @app.get("/api/shown")
@@ -339,8 +334,10 @@ def suggest_result():
 
 from app.demo import bp as demo_bp  # noqa: E402
 from app.owner import bp as owner_bp  # noqa: E402
+from app.owner_app import bp as owner_app_bp  # noqa: E402
 from app.webhooks import bp as webhooks_bp  # noqa: E402
 
+app.register_blueprint(owner_app_bp)
 app.register_blueprint(owner_bp)
 app.register_blueprint(demo_bp)
 app.register_blueprint(webhooks_bp)

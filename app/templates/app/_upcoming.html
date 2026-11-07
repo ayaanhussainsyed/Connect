@@ -1,0 +1,22 @@
+{% if rows %}
+<ol class="grid grid-cols-2 gap-x-3 gap-y-5 pt-2 sm:grid-cols-3 xl:grid-cols-4">
+  {% for r in rows %}
+  {% set nd = (r.date | nice_date).split(' ') %}
+  <li>
+    <div class="paper overflow-hidden pb-3 text-center {{ 'ring-2 ring-[#9b2c1c] ring-offset-2 ring-offset-ink-950' if r.state == 'pending' else '' }}">
+      <div class="truncate bg-[#9b2c1c] px-2 py-1 font-sign text-[12px] font-bold uppercase tracking-[0.14em] text-paper">{{ r.day_key | replace('_', ' ') | lower | capitalize }}</div>
+      <p class="mt-1.5 font-sign text-[2.8rem] font-extrabold leading-none text-[#9b2c1c]">{{ nd[1] }}</p>
+      <p class="font-sign text-[13px] font-semibold uppercase tracking-[0.2em] text-paper-faint">{{ nd[0] }} · {{ nd[2] }}</p>
+      <p class="mt-2 px-2 text-[12px] text-paper-faint">Customers see <span class="hours block text-[13px] font-medium text-paper-ink">{{ r.shown }}</span></p>
+      <div class="mt-2 flex h-6 items-center justify-center">
+        {% if r.state == 'pending' %}<span class="stamp border-[#9b2c1c] text-[#9b2c1c]" title="Suggested: {{ r.value }}">Needs you</span>
+        {% elif r.state == 'updated' %}<span class="stamp rotate-[3deg] border-[#4f6420] text-[#4f6420]" title="Now {{ r.value }}">Updated</span>
+        {% else %}<span class="text-[11px] uppercase tracking-[0.12em] text-paper-faint">no change</span>{% endif %}
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="text-[15px] text-ink-500">No special days coming up.</p>
+{% endif %}
