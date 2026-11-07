@@ -222,7 +222,7 @@ problem, plus several product mechanisms we haven't seen in listings tools. We d
 
 **Requirements:**
 - Python 3.11;
-- the challenge dataset (not included; CC BY 4.0);
+- the challenge dataset: the zip is included in `dataset/` (synthetic, CC BY 4.0);
 - optional: a MongoDB Atlas connection (for the app), the Yext sandbox key, and LLM keys. The score engine needs none
   of them.
 
@@ -231,9 +231,8 @@ git clone <this repo> connect && cd connect
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt          # exact versions: requirements.lock.txt
 
-# Dataset: unzip FONECTA_CONNECT_SUGGESTS_2026.zip so this folder exists:
-#   dataset/FONECTA_CONNECT_SUGGESTS_2026/
-mkdir -p dataset && unzip FONECTA_CONNECT_SUGGESTS_2026.zip -d dataset/
+# Dataset (included in this private repo; synthetic, CC BY 4.0). Unzip it once:
+unzip -q dataset/FONECTA_CONNECT_SUGGESTS_2026.zip -d dataset/    # creates dataset/FONECTA_CONNECT_SUGGESTS_2026/
 
 cp .env.example .env    # then fill in what you need (below)
 ```

@@ -5,7 +5,8 @@
 # local tooling
 .claude/
 # data and large artefacts (dataset: download from the Since AI challenge; CC BY 4.0)
-dataset/
+dataset/*
+!dataset/FONECTA_CONNECT_SUGGESTS_2026.zip
 outputs/
 artifacts/cache/
 artifacts/sandbox_entity_*.json
