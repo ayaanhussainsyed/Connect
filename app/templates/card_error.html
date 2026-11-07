@@ -1,0 +1,12 @@
+{% extends "owner_base.html" %}
+{% block title %}Link{% endblock %}
+{% block content %}
+<section class="rounded-lg border border-slate-200 bg-white p-5" role="alert">
+  <h1 class="text-lg font-semibold">{{ message }}</h1>
+  <p class="mt-1 text-sm text-slate-600">
+    {% if kind == 'expired' %}Ask us for a new link by replying to the message, or change your hours in Connect.
+    {% elif kind == 'used' %}This answer was already received. Open the link again to see what was saved.
+    {% else %}Check that you opened the whole link from the message.{% endif %}
+  </p>
+</section>
+{% endblock %}
