@@ -1,0 +1,16 @@
+{% if no_card %}<p class="mb-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">No message: {{ no_card.payload.reason }}</p>{% endif %}
+<ol class="space-y-3">
+  {% for s in steps %}
+  <li class="flex gap-3">
+    <span class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-xs font-semibold {{ 'bg-emerald-600 text-white' if s.done else 'bg-slate-200 text-slate-500' }}">{{ loop.index }}</span>
+    <div>
+      <p class="text-sm font-medium {{ '' if s.done else 'text-slate-400' }}">{{ s.label }}</p>
+      <p class="text-xs text-slate-500">{{ s.detail if s.detail else s.desc }}</p>
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+{% if events %}
+<details class="mt-4"><summary class="cursor-pointer text-xs text-slate-500">Audit events ({{ events | length }})</summary>
+<ul class="mt-1 space-y-0.5 font-mono text-[11px] text-slate-600">{% for e in events %}<li>#{{ e.seq }} {{ e.event_type }}</li>{% endfor %}</ul></details>
+{% endif %}

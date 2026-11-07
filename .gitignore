@@ -1,0 +1,21 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+# local tooling
+.claude/
+# data and large artefacts (dataset: download from the Since AI challenge; CC BY 4.0)
+dataset/
+outputs/
+artifacts/cache/
+artifacts/sandbox_entity_*.json
+*.sqlite
+*.db
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+# os
+.DS_Store

@@ -1,0 +1,102 @@
+{
+  "2026": {
+    "cv_score": 61.67284179325677,
+    "harmful": 219,
+    "lams": [
+      [
+        0.0,
+        0.6
+      ],
+      [
+        0.4,
+        0.5
+      ],
+      [
+        0.3,
+        0.6
+      ],
+      [
+        0.4,
+        0.4
+      ],
+      [
+        0.1,
+        0.5
+      ]
+    ],
+    "evaluate_py": {
+      "score_0_100": 61.67,
+      "rows": 11100,
+      "rows_needing_action": 5398,
+      "suggestions_made": 4195,
+      "precision_exact": 0.859,
+      "recall_exact": 0.67,
+      "harmful_suggestions": 219,
+      "search_views_protected_pct": 65.0,
+      "closed_door_views_prevented_pct": 72.9,
+      "businesses_contacted": 750,
+      "avg_dates_per_contacted_business": 5.59,
+      "breakdown": {
+        "correct_silence": 5438,
+        "missed": 1449,
+        "exact": 3604,
+        "same_state_off": 164,
+        "harmful_wrong_state": 219,
+        "spam_wrong_hours": 203,
+        "flag_correct": 11,
+        "near": 1,
+        "missed_closed_business": 7,
+        "suggest_to_closed_business": 4
+      },
+      "ignored_prediction_rows_not_in_labels": 30655
+    }
+  },
+  "2025": {
+    "cv_score": 55.41740360806509,
+    "harmful": 211,
+    "lams": [
+      [
+        0.1,
+        0.5
+      ],
+      [
+        0.0,
+        0.6
+      ],
+      [
+        0.1,
+        0.6
+      ],
+      [
+        0.1,
+        0.7
+      ],
+      [
+        0.0,
+        0.6
+      ]
+    ],
+    "evaluate_py": {
+      "score_0_100": 55.42,
+      "rows": 11118,
+      "rows_needing_action": 5654,
+      "suggestions_made": 3900,
+      "precision_exact": 0.866,
+      "recall_exact": 0.597,
+      "harmful_suggestions": 211,
+      "search_views_protected_pct": 56.3,
+      "closed_door_views_prevented_pct": 66.2,
+      "businesses_contacted": 751,
+      "avg_dates_per_contacted_business": 5.19,
+      "breakdown": {
+        "correct_silence": 5268,
+        "exact": 3378,
+        "missed": 1950,
+        "harmful_wrong_state": 211,
+        "same_state_off": 174,
+        "spam_wrong_hours": 137
+      },
+      "ignored_prediction_rows_not_in_labels": 0
+    }
+  }
+}
