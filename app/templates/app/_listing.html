@@ -1,61 +1,43 @@
+{% from "app/_city.html" import building %}
 {% if error %}
 <p role="alert" class="alert alert-error m-6">Couldn’t read the listing: {{ error }}</p>
 {% else %}
-<div class="px-6 pb-2 pt-6 text-center">
-  {% if now.open %}
-  <span class="inline-block rounded-full border-2 border-neon px-6 py-1 font-sign text-2xl font-bold uppercase tracking-[0.22em] neon-on shadow-[0_0_10px_#ff5b3d,inset_0_0_8px_rgba(255,91,61,.45)]">Open</span>
-  {% else %}
-  <span class="inline-block rounded-full border-2 border-ink-600 px-6 py-1 font-sign text-2xl font-bold uppercase tracking-[0.22em] neon-off">Open</span>
-  {% endif %}
-  <p class="mt-3 text-sm text-ink-400">
-    {% if now.open is none %}Today: <span class="hours text-ink-200">{{ now.today }}</span>
-    {% elif now.open %}Open now · today <span class="hours text-ink-200">{{ now.today }}</span>
-    {% elif now.today != 'closed' %}Closed now · today <span class="hours text-ink-200">{{ now.today }}</span>
-    {% else %}Closed all day today{% endif %}
-    {% if now.special %}<span class="text-gold-200"> (special hours)</span>{% endif %}
-  </p>
-  {% if reopen %}<p class="alert alert-warn mt-3">Shown as temporarily closed until {{ reopen | nice_date }}.</p>{% endif %}
+<div class="px-5 py-5">
+  <p class="eyebrow">Every week</p>
+  <div class="mt-3">
+    {% set floors = [] %}
+    {% for d, h in week %}{% set _ = floors.append((d, h if h == 'closed' else '', h, 'SAME', none, '')) %}{% endfor %}
+    {{ building(floors, '3rem') }}
+  </div>
 </div>
 
-<div class="px-6 py-5">
-  <p class="eyebrow">Opening hours</p>
-  <dl class="mt-3 space-y-1.5">
-    {% for d, h in week %}
-    <div class="leaders vinyl text-[17px]"><dt class="w-10">{{ d }}</dt><span class="dots"></span><dd class="tabular-nums {{ 'text-ink-500' if h == 'closed' else '' }}">{{ h | replace(':00', '') | replace('-', '–') }}</dd></div>
-    {% endfor %}
-  </dl>
+{% if holidays %}
+<div class="border-t border-ink-800 px-5 py-5">
+  <p class="eyebrow">Holiday hours set</p>
+  <div class="mt-3">
+    {% set hfloors = [] %}
+    {% for d, h in holidays.items() %}{% set nd = (d | nice_date).split(' ') %}{% set _ = hfloors.append((nd[1] ~ ' ' ~ nd[2], 'regular' if h == 'REGULAR' else h, h, 'SAME', none, '')) %}{% endfor %}
+    {{ building(hfloors, '3.5rem', false) }}
+  </div>
 </div>
+{% else %}
+<p class="border-t border-ink-800 px-5 py-4 text-sm text-ink-500">No holiday hours set. On holidays, apps show the weekly hours.</p>
+{% endif %}
 
-<div class="border-t border-ink-800 px-6 py-5">
-  <p class="eyebrow">Holiday hours</p>
-  {% if holidays %}
-  <ul class="mt-3 space-y-1.5">
-    {% for d, h in holidays.items() %}
-    <li class="leaders text-[15px]"><span class="text-ink-300">{{ d | nice_date }}</span><span class="dots"></span><span class="hours {{ 'text-ink-400' if h == 'closed' else 'text-gold-200' }}">{{ 'regular hours' if h == 'REGULAR' else h }}</span></li>
+<div class="border-t border-ink-800 px-5 py-5">
+  <p class="eyebrow">How fast each app lights up</p>
+  <ul class="mt-4 space-y-3">
+    {% for g in street(where) %}
+    <li class="grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-3">
+      <span class="relative mt-1 block h-3.5 w-3.5 rounded-full" style="background: radial-gradient(circle, #fff3d6 0 35%, #ffc56a 60%); box-shadow: 0 0 {{ [16 - g.day * 2, 3] | max }}px {{ [4 - (g.day // 2), 0] | max }}px rgba(255,197,106,.55)"></span>
+      <div class="min-w-0">
+        <p class="font-mono text-[11px] uppercase tracking-[0.12em] text-warm">{{ 'Within the day' if g.day == 0 else 'Day ' ~ g.day }}</p>
+        <p class="text-sm text-ink-200">{{ g.apps | join(', ') }}</p>
+      </div>
+    </li>
     {% endfor %}
   </ul>
-  {% else %}<p class="mt-2 text-[15px] text-ink-500">None set. On holidays, apps show your weekly hours.</p>{% endif %}
-</div>
-
-<div class="border-t border-ink-800 px-6 py-5">
-  <p class="eyebrow">Shows on</p>
-  {% set live = where | selectattr('status', 'equalto', 'LIVE') | list %}
   {% set other = where | rejectattr('status', 'equalto', 'LIVE') | list %}
-  <ul class="mt-3 space-y-1.5 text-[15px]">
-    {% for w in live[:7] %}
-    <li class="leaders"><span class="text-ink-100">{{ w.publisher }}</span><span class="dots"></span><span class="font-sign text-sm uppercase tracking-[0.08em] text-ink-400">{{ w.eta_text }}</span></li>
-    {% endfor %}
-  </ul>
-  {% if live[7:] or other %}
-  <details class="mt-3">
-    <summary class="cursor-pointer text-sm text-ink-400 hover:text-ink-100">{{ live[7:] | length }} more{% if other %} · {{ other | length }} not connected{% endif %} ▸</summary>
-    <ul class="mt-2 space-y-1.5 text-[15px]">
-      {% for w in live[7:] + other %}
-      <li class="leaders {{ '' if w.status == 'LIVE' else 'text-ink-600' }}"><span>{{ w.publisher }}</span><span class="dots"></span><span class="font-sign text-sm uppercase tracking-[0.08em]">{{ w.eta_text }}</span></li>
-      {% endfor %}
-    </ul>
-  </details>
-  {% endif %}
-  <p class="mt-3 text-xs text-ink-600">Times are how fast each app usually picks up a change.</p>
+  {% if other %}<p class="mt-4 text-xs text-ink-500">Not connected: {{ other | map(attribute='publisher') | join(', ') }}</p>{% endif %}
 </div>
 {% endif %}
