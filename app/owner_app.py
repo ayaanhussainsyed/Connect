@@ -41,6 +41,109 @@ SHOWCASE = [
 ]
 
 
+def _minutes(hours: str | None) -> list[tuple[int, int]]:
+    if not hours or hours in ("closed", "REGULAR"):
+        return []
+    out = []
+    for part in hours.split(","):
+        a, _, b = part.strip().partition("-")
+        try:
+            s = int(a[:2]) * 60 + int(a[3:5] or 0)
+            e = int(b[:2]) * 60 + int(b[3:5] or 0)
+        except (ValueError, IndexError):
+            return []
+        out.append((s, e if e > s else 24 * 60))
+    return out
+
+
+def _pct(spans: list[tuple[int, int]]) -> list[dict]:
+    return [{"l": round(s / 14.4, 3), "w": round((e - s) / 14.4, 3), "from": f"{s // 60:02d}:{s % 60:02d}",
+             "to": f"{e // 60:02d}:{e % 60:02d}"} for s, e in spans]
+
+
+@bp.app_template_global()
+def spans(hours: str | None) -> list[dict]:
+    """'07:30-18:00' -> [{l, w, from, to}] as percentages of a 0-24 h axis."""
+    return _pct(_minutes(hours))
+
+
+@bp.app_template_global()
+def ghost(shown: str | None, real: str | None) -> dict:
+    """Where the apps show open but the business is really closed: the locked-door hours."""
+    real_m = _minutes(real)
+    out = []
+    for s, e in _minutes(shown):
+        cur = s
+        for rs, re_ in sorted(real_m):
+            if re_ <= cur or rs >= e:
+                continue
+            if rs > cur:
+                out.append((cur, rs))
+            cur = max(cur, re_)
+        if cur < e:
+            out.append((cur, e))
+    total = sum(e - s for s, e in out)
+    return {"spans": _pct(out), "minutes": total, "hours": round(total / 60, 1)}
+
+
+WARM, COLD, MISSED = "#ffc56a", "#9cc4ff", "#6b5530"
+
+
+@bp.app_template_global()
+def floor(shown: str | None, real: str | None = "SAME") -> list[dict]:
+    """One floor of a building: 24 windows, one per hour. Warm = really open, cold = an app says open
+    but the door is locked, dim warm = open but the apps say closed. ``real="SAME"`` draws one state."""
+    s_m = _minutes(shown)
+    r_m = s_m if real == "SAME" else _minutes(real)
+
+    def is_in(m, spans_):
+        return any(a <= m < b for a, b in spans_)
+
+    wins = []
+    for h in range(24):
+        segs, cur, start = [], None, 0
+        for m in range(h * 60, h * 60 + 60, 5):
+            st = (is_in(m, s_m), is_in(m, r_m))
+            if st != cur:
+                if cur is not None:
+                    segs.append((cur, start, m - h * 60))
+                cur, start = st, m - h * 60
+        segs.append((cur, start, 60))
+        stops, mins = [], {"ok": 0, "false": 0, "missed": 0}
+        for (sh, re_), a, b in segs:
+            kind = "ok" if sh and re_ else "false" if sh else "missed" if re_ else "off"
+            if kind != "off":
+                mins[kind] += b - a
+            color = {"ok": WARM, "false": COLD, "missed": MISSED, "off": "transparent"}[kind]
+            stops.append(f"{color} {a / 60 * 100:.0f}% {b / 60 * 100:.0f}%")
+        dominant = max(mins, key=mins.get) if any(mins.values()) else "off"
+        wins.append({"h": h, "bg": f"linear-gradient(to right, {', '.join(stops)})", "kind": dominant,
+                     "label": f"{h:02d}:00 " + {"ok": "open", "false": "apps say open, door locked",
+                                                 "missed": "open, apps say closed", "off": "closed"}[dominant]})
+    return wins
+
+
+@bp.app_template_global()
+def street(rows: list[dict]) -> list[dict]:
+    """Apps grouped by the day they pick up a change (0 = within the day), for the lamp-post street."""
+    import math
+    groups: dict[int, list[str]] = {}
+    for w in rows:
+        if w.get("status") != "LIVE":
+            continue
+        day = 0 if w["typical_seconds"] < 86400 else math.ceil(w["typical_seconds"] / 86400 - 0.01)
+        groups.setdefault(day, []).append(w["publisher"].split(" (")[0])
+    return [{"day": d, "apps": groups[d]} for d in sorted(groups)]
+
+
+@bp.app_template_global()
+def eta_pct(seconds: float) -> float:
+    """Where an update speed sits on a log axis from 1 minute to 7 days."""
+    import math
+    lo, hi = math.log10(60), math.log10(7 * 86400)
+    return round(min(100.0, max(0.0, (math.log10(max(seconds, 1)) - lo) / (hi - lo) * 100)), 2)
+
+
 def _open_now(eid: str, week: list[str], holidays: dict[str, str]) -> dict:
     """Is the listing showing the business as open at this moment (its own time zone)?"""
     now = datetime.now(ZoneInfo(TZ.get(eid[:2], "Europe/Helsinki")))
@@ -48,14 +151,19 @@ def _open_now(eid: str, week: list[str], holidays: dict[str, str]) -> dict:
     shown = holidays.get(today)
     if shown in (None, "REGULAR"):
         shown = week[now.weekday()]
-    if not shown or shown == "closed":
-        return {"open": False, "today": shown or "closed", "special": today in holidays}
     hm = now.hour * 60 + now.minute
-    try:
-        spans = [tuple(int(p[:2]) * 60 + int(p[3:5]) for p in part.strip().split("-")) for part in shown.split(",")]
-    except (ValueError, IndexError):
-        return {"open": None, "today": shown, "special": today in holidays}
-    return {"open": any(a <= hm < b for a, b in spans), "today": shown, "special": today in holidays}
+    base = {"today": shown or "closed", "special": today in holidays, "now_pct": round(hm / 14.4, 2),
+            "clock": now.strftime("%H:%M"), "weekday": now.strftime("%A"), "hour": now.hour}
+    if not shown or shown == "closed":
+        return {**base, "open": False}
+    mins = _minutes(shown)
+    if not mins:
+        return {**base, "open": None}
+    return {**base, "open": any(a <= hm < b for a, b in mins)}
+
+
+def _city(eid: str) -> str:
+    return next((b["city"] for b in businesses() if b["entity_id"] == eid), "")
 
 
 @lru_cache(maxsize=1)
@@ -108,18 +216,23 @@ def _needs(eid: str, card: Card | None = None, *, errors: dict | None = None, no
 
 @bp.get("/")
 def landing():
+    from cs import confirm
+    as_of = data.SNAPSHOT[SEASON]
     shops = []
     for eid, story in SHOWCASE:
         ent = data.entity(eid)
-        shops.append({"eid": eid, "name": ent.get("name", eid), "city": ent.get("city", ""), "story": story})
-    return render_template("app/landing.html", shops=shops)
+        shown = display.explain_shown(eid, "2026-12-24", as_of)["shown"]
+        shops.append({"eid": eid, "name": ent.get("name", eid), "city": _city(eid), "story": story,
+                      "xmas_eve": shown})
+    where = [w for w in confirm.where_it_shows(DEFAULT_BUSINESS) if w["status"] == "LIVE"]
+    return render_template("app/landing.html", shops=shops, where=where)
 
 
 @bp.get("/app")
 def home():
     eid = _eid()
     ent = data.entity(eid)
-    return render_template("app/home.html", eid=eid, name=ent.get("name", eid), city=ent.get("city", ""),
+    return render_template("app/home.html", eid=eid, name=ent.get("name", eid), city=_city(eid),
                            businesses=businesses())
 
 
@@ -196,13 +309,15 @@ def listing():
         with season.yext_client(target) as yc:
             ent = yc.get_entity(eid)
     except Exception as e:  # noqa: BLE001
-        return render_template("app/_listing.html", error=str(e), where=where, target=target)
+        tpl = "app/_now.html" if request.args.get("part") == "now" else "app/_listing.html"
+        return render_template(tpl, error=str(e), where=where, target=target)
     today = date.today().isoformat()
     week_hours = week_from_yext(ent.get("hours") or {})
     week = list(zip([d.capitalize()[:3] for d in DAYS], week_hours))
     all_holidays = holiday_map(ent)
     holidays = {d: h for d, h in sorted(all_holidays.items()) if d >= today}
-    return render_template("app/_listing.html", error=None, week=week, holidays=holidays, where=where,
+    tpl = "app/_now.html" if request.args.get("part") == "now" else "app/_listing.html"
+    return render_template(tpl, error=None, week=week, holidays=holidays, where=where,
                            target=target, reopen=(ent.get("hours") or {}).get("reopenDate"),
                            now=_open_now(eid, week_hours, all_holidays))
 

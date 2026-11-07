@@ -16,9 +16,8 @@
   <header class="sticky top-0 z-20 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3">
       <a href="/" class="group flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-200">
-        <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
-          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-40 motion-reduce:animate-none"></span>
-          <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-signal"></span>
+        <span class="grid grid-cols-3 gap-[2px] rounded-[2px] bg-[#17233a] p-[3px]" aria-hidden="true">
+          {% for on in (0, 1, 0, 1, 1, 0) %}<span class="h-[6px] w-[5px] rounded-[1px] {{ 'bg-warm shadow-[0_0_6px_rgba(255,197,106,.8)]' if on else 'bg-[#070c17]' }}"></span>{% endfor %}
         </span>
         <span class="text-[15px] font-semibold tracking-tight text-ink-50">Connect</span>
         <span class="text-[15px] text-ink-400">Team tools</span>

@@ -2,238 +2,254 @@
 <html lang="en">
 <head>
   {% include "_head.html" %}
-  <title>Connect: the right hours, everywhere customers look</title>
-  <style>
-    .door-frame { background: linear-gradient(90deg, #3b3a37, #6d6a64 18%, #2c2b29 40%, #57544f 70%, #2a2927); }
-    .receipt {
-      --s: 14px;
-      -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--s) 51% repeat-x,
-                    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--s) 51% repeat-x;
-              mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--s) 51% repeat-x,
-                    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--s) 51% repeat-x;
-    }
-    .tube { border: 2px solid #ff5b3d; box-shadow: 0 0 6px #ff5b3d, 0 0 18px rgba(255,91,61,.55), inset 0 0 8px rgba(255,91,61,.5); }
-    .shop:hover .shop-neon, .shop:focus-visible .shop-neon { color: #ffe1d8; text-shadow: 0 0 2px #fff, 0 0 8px #ff5b3d, 0 0 18px #ff5b3d; }
-    @keyframes sway { 0%, 100% { transform: rotate(3deg); } 50% { transform: rotate(2.2deg); } }
-    .sway { animation: sway 6s ease-in-out infinite; transform-origin: 50% 0; }
-    @media (prefers-reduced-motion: reduce) { .sway { animation: none; transform: rotate(3deg); } }
-  </style>
+  <title>Connect: Google leaves the lights on</title>
 </head>
 <body>
-  <header class="relative z-20">
-    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5">
-      <a href="/" class="flex items-baseline gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-200">
-        <span class="gold-leaf font-display text-2xl italic">Connect</span>
-        <span class="font-sign text-xs uppercase tracking-[0.25em] text-ink-400">suggests</span>
-      </a>
-      <nav class="hidden items-center gap-6 text-[15px] text-ink-300 md:flex" aria-label="Sections">
-        <a href="#how" class="hover:text-ink-50">How it works</a>
-        <a href="#menu" class="hover:text-ink-50">What it does</a>
-        <a href="#try" class="hover:text-ink-50">Try a shop</a>
-      </nav>
-      <a href="/app" class="btn btn-sm">Open the app</a>
+  {% from "app/_city.html" import building, floorrow, hourlabels, legend, lit, lampstreet %}
+  {% macro logo() %}
+  <span class="grid grid-cols-3 gap-[2px] rounded-[2px] bg-[#17233a] p-[3px]" aria-hidden="true">
+    {% for on in (0, 1, 0, 1, 1, 0) %}<span class="h-[6px] w-[5px] rounded-[1px] {{ 'bg-warm shadow-[0_0_6px_rgba(255,197,106,.8)]' if on else 'bg-[#070c17]' }}"></span>{% endfor %}
+  </span>
+  {% endmacro %}
+  {% macro waffle(value, kind, rest='') %}
+  <div class="wall rounded-sm p-2">
+    <div class="grid grid-cols-10 gap-[3px]">
+      {% for i in range(100) %}
+      {% set f = [[value - i, 0] | max, 1] | min %}
+      {% set col = '#ffc56a' if kind == 'ok' else '#9cc4ff' %}
+      {% set rc = '#9cc4ff' if rest == 'false' else 'transparent' %}
+      <span class="win {{ ('win-ok' if kind == 'ok' else 'win-false') if f >= 0.5 else ('win-false' if rest == 'false' else '') }}"
+            style="background-image: linear-gradient(to right, {{ col }} 0% {{ (f * 100) | round }}%, {{ rc }} {{ (f * 100) | round }}% 100%)"></span>
+      {% endfor %}
     </div>
-  </header>
+  </div>
+  {% endmacro %}
 
-  <main>
-    <section class="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-24 pt-6 lg:grid-cols-[1.05fr_1fr] lg:pt-12">
+  <div class="relative overflow-hidden">
+    <div class="snowfall pointer-events-none absolute inset-0 opacity-50" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-gradient-to-b from-[#132447] via-[#0b1424] to-transparent" aria-hidden="true"></div>
+
+    <header class="relative">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5">
+        <a href="/" class="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-warm">{{ logo() }}<span class="text-[19px] font-bold tracking-[-0.01em] text-ink-50">Connect</span></a>
+        <nav class="hidden items-center gap-7 text-[15px] text-ink-300 md:flex" aria-label="Sections">
+          <a href="#street" class="hover:text-ink-50">Every app</a>
+          <a href="#how" class="hover:text-ink-50">How it works</a>
+          <a href="#can" class="hover:text-ink-50">What it does</a>
+          <a href="#try" class="hover:text-ink-50">Try it</a>
+        </nav>
+        <a href="/app" class="btn btn-sm">Open the app</a>
+      </div>
+    </header>
+
+    <section class="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pb-24 pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-16">
       <div class="rise">
-        <p class="eyebrow">Fonecta Connect · Since AI Hackathon 2026, Turku</p>
-        <h1 class="mt-5 font-display text-[3.2rem] leading-[0.98] text-ink-50 sm:text-[4.4rem]">
-          The note on your door never reaches <em class="gold-leaf pr-1">Google.</em>
+        <p class="eyebrow">Fonecta Connect · Since AI Hackathon 2026</p>
+        <h1 class="mt-5 text-[3.3rem] font-bold leading-[0.96] tracking-[-0.035em] text-ink-50 sm:text-[4.9rem]">
+          Google leaves<br>the lights <span class="text-cold [text-shadow:0_0_28px_rgba(156,196,255,.55)]">on.</span>
         </h1>
         <p class="lede mt-7">
-          At Christmas, owners tape new hours to the door. Customers check Google, Apple Maps and AI assistants instead,
-          and walk to a locked door. Connect spots the days that will be wrong, sends the owner one message with the right
-          hours, and puts them on every app at once.
+          On Christmas Eve, Kahvila Aurora closes at 13. Google, Apple Maps and the AI assistants still say open until 18,
+          so the café stays lit on every phone while its door is locked. Connect notices, asks the owner once,
+          and turns the false light off everywhere.
         </p>
-        <div class="mt-9 flex flex-wrap items-center gap-3">
+        <div class="mt-9 flex flex-wrap gap-3">
           <a href="/app?b=FI-D0001" class="btn btn-primary btn-lg">Open the app <span aria-hidden="true">→</span></a>
           <a href="/demo?entity_id=FI-D0001" class="btn btn-lg">Watch a message go out</a>
         </div>
-        <p class="mt-6 text-sm text-ink-500">Built for Fonecta Connect in Finland, Sweden and Norway. Every business here is made-up demo data.</p>
       </div>
 
-      <div class="relative mx-auto w-full max-w-[26rem] rise" style="animation-delay:150ms" aria-label="Illustration: a shop door with a handwritten holiday note, and a search result that still shows the old hours">
-        <div class="door-frame rounded-[6px] p-[10px] shadow-[0_40px_90px_-30px_rgba(0,0,0,1)]">
-          <div class="glass relative overflow-hidden rounded-[2px] px-7 pb-48 pt-6">
-            <svg viewBox="0 0 360 120" class="w-full" aria-hidden="true">
-              <defs>
-                <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#fff4cf"/><stop offset=".45" stop-color="#d6b263"/>
-                  <stop offset=".62" stop-color="#f3dc9c"/><stop offset="1" stop-color="#8c6a26"/>
-                </linearGradient>
-                <path id="arc" d="M 22 108 Q 180 2 338 108"/>
-              </defs>
-              <text font-family="Bodoni Moda, Georgia, serif" font-style="italic" font-size="46" font-weight="600"
-                    fill="url(#leaf)" stroke="#4a3610" stroke-width=".7" letter-spacing="1">
-                <textPath href="#arc" startOffset="50%" text-anchor="middle">Kahvila Aurora</textPath>
-              </text>
-            </svg>
-            <p class="-mt-1 text-center font-sign text-sm uppercase tracking-[0.4em] text-ink-300">Turku</p>
-
-            <div class="mt-7 flex justify-center">
-              <span class="tube flicker rounded-full px-5 py-1 font-sign text-2xl font-bold uppercase tracking-[0.2em] neon-on">Auki</span>
-            </div>
-
-            <dl class="mx-auto mt-8 w-56 space-y-1.5 text-[17px]">
-              {% for d, h in [('Ma–Pe', '7.30–18'), ('La', '9–16'), ('Su', 'suljettu')] %}
-              <div class="leaders vinyl"><dt>{{ d }}</dt><span class="dots"></span><dd class="tabular-nums">{{ h }}</dd></div>
-              {% endfor %}
-            </dl>
-
-            <div class="sway paper absolute bottom-5 right-6 w-44 px-4 pb-4 pt-6 font-hand text-[15px] leading-snug">
-              <span class="tape -top-3 left-10 rotate-[-4deg]"></span>
-              Jouluaattona<br><strong class="text-[17px]">7.30–13</strong><br>
-              Joulupäivänä<br><strong class="text-[17px] text-[#9b2c1c]">suljettu!</strong>
-              <span class="mt-1 block text-right text-[13px] text-paper-faint">– Aleksi</span>
-            </div>
-            <span class="absolute right-2 top-1/2 h-24 w-2 -translate-y-1/2 rounded-full bg-gradient-to-b from-ink-300 via-ink-500 to-ink-300 shadow" aria-hidden="true"></span>
-          </div>
-        </div>
-
-        <div class="relative -mt-10 ml-[-1.5rem] w-[17.5rem] rounded-2xl border border-ink-600 bg-ink-850 p-4 shadow-[0_24px_60px_-20px_rgba(0,0,0,1)] sm:ml-[-3rem]">
-          <p class="text-[11px] uppercase tracking-[0.18em] text-ink-500">Online search · Thu 24 Dec</p>
-          <p class="mt-1.5 font-bold text-ink-50">Kahvila Aurora</p>
-          <p class="text-sm text-ink-400">Café · Turku</p>
-          <p class="mt-2 text-sm"><span class="font-bold text-[#7fd08a]">Open</span> <span class="text-ink-300">· Closes 18:00</span></p>
-          <span class="stamp absolute -right-4 -top-4 border-neon bg-ink-950 text-neon">Wrong</span>
-        </div>
-      </div>
+      <figure class="rise" style="animation-delay:160ms">
+        <p class="mb-3 pl-[7.5rem] font-mono text-[11px] uppercase tracking-[0.2em] text-warm">Kahvila Aurora · {{ shops[0].city }}</p>
+        {{ building([
+          ('Wed 23 Dec', 'Eve before', '07:30-18:00', '07:30-18:00', none, ''),
+          ('Thu 24 Dec', 'Christmas Eve', '07:30-18:00', '07:30-13:00', none, '<span class="text-cold">13:00–18:00 · 5 hours of locked door</span>' | safe),
+          ('Fri 25 Dec', 'Christmas Day', '07:30-18:00', 'closed', none, '<span class="text-cold">Closed all day · apps say open</span>' | safe),
+        ], '6.5rem') }}
+        <figcaption class="mt-5 pl-[7.5rem]">{{ legend() }}
+          <p class="mt-3 max-w-md text-[13px] leading-5 text-ink-500">Each floor is a day, each window an hour. Warm windows are the café really open; cold windows are phones showing it open while the door is locked.</p>
+        </figcaption>
+      </figure>
     </section>
+  </div>
 
-    <div class="border-y border-ink-800 bg-ink-900/60">
-      <p class="mx-auto max-w-6xl px-5 py-6 text-center font-display text-xl italic text-ink-200 sm:text-2xl">
-        Owners update the door. Customers check more than thirty apps. <span class="gold-leaf not-italic font-semibold">Connect closes the gap.</span>
-      </p>
-    </div>
-
-    <section id="how" class="mx-auto max-w-6xl scroll-mt-10 px-5 py-24" aria-labelledby="how-h">
-      <p class="eyebrow">How it works</p>
-      <h2 id="how-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">One message. <em class="gold-leaf">Every app.</em></h2>
-      <ol class="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-        {% for title, text in [
-          ('Notice', 'Connect checks every coming holiday against what Google, Apple Maps and the others will show, and finds the days that will be wrong.'),
-          ('Suggest', 'It works out the right hours from the owner’s own past years. It only speaks up when it’s sure; otherwise it asks, or stays quiet.'),
-          ('Ask', 'One short WhatsApp or email, in Finnish, Swedish, Norwegian or English, with the reason and an answer-by date. One tap. No login.'),
-          ('Fix everywhere', 'Approved hours reach 35+ apps at once, and the owner is told when each shows them. Say “every year” and next year happens by itself.'),
-        ] %}
-        <li class="border-t border-ink-700 pt-6">
-          <span class="outline-num text-6xl leading-none">0{{ loop.index }}</span>
-          <h3 class="mt-4 font-sign text-xl font-bold uppercase tracking-[0.12em] text-ink-50">{{ title }}</h3>
-          <p class="mt-2 leading-7 text-ink-300">{{ text }}</p>
-        </li>
-        {% endfor %}
-      </ol>
-    </section>
-
-    {% set owner = [
-      ('Holiday hours, with the reason', 'App · WhatsApp · Email', true),
-      ('Approve, change or say no in one tap', 'App · WhatsApp · Email', true),
-      ('“Every year”: next year sorts itself', 'App · WhatsApp · Email', true),
-      ('One question when Connect isn’t sure', 'App · WhatsApp', true),
-      ('Answer in your own words', 'WhatsApp', true),
-      ('Where it shows, and when', 'App · WhatsApp · Email', true),
-      ('Undo anything', 'App · WhatsApp', true),
-      ('“We’re closed today”', 'App · WhatsApp', true),
-      ('Weekly hours that changed', 'in the lab', false),
-      ('Replies to “it was closed” reviews', 'in the lab', false),
-      ('Ask Connect about your listing', 'in the lab', false),
-    ] %}
-    <section id="menu" class="scroll-mt-10 px-5 pb-24" aria-labelledby="menu-h">
-      <div class="mx-auto max-w-6xl rounded-[28px] border-[6px] border-[#2b2118] bg-[#0d0c0b] p-[3px] shadow-[0_0_0_1px_#4a3a28,0_50px_100px_-40px_rgba(0,0,0,1)]">
-        <div class="rounded-[22px] border border-ink-800 px-6 py-12 sm:px-12">
-          <p class="eyebrow text-center">Today’s menu</p>
-          <h2 id="menu-h" class="mt-3 text-center font-display text-4xl italic sm:text-5xl"><span class="gold-leaf">What Connect can do</span></h2>
-
-          <div class="mt-12 grid gap-x-16 gap-y-12 lg:grid-cols-[1.25fr_1fr]">
-            <div>
-              <h3 class="font-sign text-lg font-bold uppercase tracking-[0.2em] text-gold-200">For the owner</h3>
-              <ul class="mt-5 space-y-3.5">
-                {% for name, where, live in owner %}
-                <li class="flex flex-col items-start gap-1 text-[16px] sm:flex-row sm:items-baseline sm:gap-2">
-                  <span class="{{ 'text-ink-50' if live else 'text-ink-400' }}">{{ name }}</span>
-                  <span class="hidden min-w-[1.5rem] flex-1 translate-y-[-0.25em] border-b-2 border-dotted border-ink-600 sm:block"></span>
-                  {% if live %}<span class="whitespace-nowrap font-sign text-sm uppercase tracking-[0.1em] text-ink-300">{{ where }}</span>
-                  {% else %}<span class="tag tag-cli whitespace-nowrap">{{ where }}</span>{% endif %}
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-            <div class="space-y-10">
-              {% for head, items in [
-                ('Done for you', ['Works out what customers see right now', 'Predicts the real hours from past years', 'Speaks up only when it’s worth it', 'Stays quiet when every app is right', 'Closed for good? A person checks first', 'New shop, no history? One question', 'Learns from every answer', 'Finnish · Swedish · Norwegian · English']),
-                ('Keeping it safe', ['Nothing changes without the owner’s OK', 'The owner’s own edits always win', 'Links can’t be faked, reused or misclicked', 'Every step logged, tamper-proof']),
-                ('For Fonecta staff', ['Every message sent, and where it stands', 'Why a listing shows those hours', 'Every suggestion with its evidence']),
-              ] %}
-              <div>
-                <h3 class="font-sign text-lg font-bold uppercase tracking-[0.2em] text-gold-200">{{ head }}</h3>
-                <ul class="mt-4 space-y-2 text-[15px] text-ink-200">
-                  {% for i in items %}<li class="flex gap-3"><span class="mt-[0.55em] h-1.5 w-1.5 flex-none rotate-45 bg-gold-400" aria-hidden="true"></span>{{ i }}</li>{% endfor %}
-                </ul>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          <p class="mt-12 text-center text-sm text-ink-500"><span class="tag tag-cli">in the lab</span> built and tested, not in the app yet</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-28 lg:grid-cols-[1fr_auto]" aria-labelledby="res-h">
+  <section id="street" class="scroll-mt-8 border-t border-ink-800" aria-labelledby="street-h">
+    <div class="mx-auto grid max-w-6xl gap-12 px-5 py-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-center">
       <div>
-        <p class="eyebrow">Results</p>
-        <h2 id="res-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">Measured, <em class="gold-leaf">not promised.</em></h2>
-        <p class="lede mt-6">Scored with Fonecta’s own scoring script on 3,000 made-up businesses in Finland, Sweden and Norway,
-          against Fonecta’s own rules as the baseline. Each business is scored by a model that never saw it.</p>
+        <p class="eyebrow">Every app</p>
+        <h2 id="street-h" class="mt-3 text-4xl font-bold tracking-[-0.025em] text-ink-50">One answer travels down the street.</h2>
+        <p class="lede mt-5">Each app is a lamp that lights up when it picks up the change: Google within the day, Apple Maps
+          on day 2, the AI assistants on day 7. That’s why Connect asks a week ahead. Answer by 17 December, and every
+          app is lit right on Christmas Eve.</p>
       </div>
-      <div class="drop-shadow-[0_30px_40px_rgba(0,0,0,.8)]">
-        <div class="receipt paper mx-auto w-[19.5rem] rotate-[1.5deg] px-6 py-9 font-mono text-[13px] leading-6">
-          <p class="text-center font-sign text-lg font-bold uppercase tracking-[0.2em]">Connect Suggests</p>
-          <p class="text-center text-paper-faint">test run · dev 2026</p>
-          <p class="my-3 border-t border-dashed border-paper-faint"></p>
-          {% for k, v in [('Suggestion score', '61.67'), ('Fonecta baseline', '54.49'), ('Difference', '+7.2')] %}
-          <div class="leaders"><span>{{ k }}</span><span class="dots !border-paper-faint/60"></span><span class="font-medium">{{ v }}</span></div>
-          {% endfor %}
-          <p class="my-3 border-t border-dashed border-paper-faint"></p>
-          {% for k, v in [('Closed doors prevented', '72.9%'), ('  baseline', '69.2%'), ('New shops, no history', '36.8'), ('  baseline', '14.2'), ('Wrong auto-changes', '3.5%'), ('  without the check', '10.1%')] %}
-          <div class="leaders {{ 'text-paper-faint' if k.startswith(' ') else '' }}"><span class="whitespace-pre">{{ k }}</span><span class="dots !border-paper-faint/60"></span><span>{{ v }}</span></div>
-          {% endfor %}
-          <p class="my-3 border-t border-dashed border-paper-faint"></p>
-          <p class="text-center text-[12px] uppercase tracking-[0.12em]">No customer walks<br>to a closed door</p>
-          <p class="mt-2 text-center text-[11px] text-paper-faint">* * * kiitos · tack · takk * * *</p>
+      <figure>
+        {{ lampstreet(street(where), '17 Dec: owner approves', '24 Dec: Christmas Eve') }}
+        <figcaption class="mt-3 text-xs text-ink-500">Kahvila Aurora’s listings and each app’s typical update speed, from Fonecta’s data.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="how" class="scroll-mt-8 border-t border-ink-800" aria-labelledby="how-h">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-h" class="mt-3 text-4xl font-bold tracking-[-0.025em] text-ink-50">From false light to the right light, in one tap.</h2>
+      <ol class="mt-14 grid gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-4">
+        <li>
+          <p class="font-mono text-sm text-warm">01 · Notice</p>
+          <div class="wall mt-4 rounded-sm p-2">{{ floorrow('07:30-18:00', '07:30-13:00') }}</div>
+          <p class="mt-4 leading-7 text-ink-300">Connect compares what the apps will show on every coming holiday with what the owner really does, and finds the cold windows.</p>
+        </li>
+        <li>
+          <p class="font-mono text-sm text-warm">02 · Suggest</p>
+          <div class="wall mt-4 rounded-sm p-2">{{ floorrow('07:30-13:00') }}</div>
+          <p class="mt-4 leading-7 text-ink-300">It works out the right hours from the owner’s own past years, and only speaks up when it’s sure.</p>
+        </li>
+        <li>
+          <p class="font-mono text-sm text-warm">03 · Ask</p>
+          <div class="mt-4 rounded-lg border border-cold/30 bg-[#0d1830] px-3 py-2.5 text-[13px] leading-5 text-ink-200 shadow-[0_0_24px_rgba(156,196,255,.12)]">
+            to 24.12. <span class="hours">7.30–13</span> <span class="text-ink-400">(viime vuonna sama)</span><br>
+            <span class="mt-1.5 inline-block rounded-full border border-ink-500 px-2 text-[11px]">Hyväksy</span>
+            <span class="inline-block rounded-full border border-ink-500 px-2 text-[11px]">Hyväksy + joka vuosi</span>
+          </div>
+          <p class="mt-4 leading-7 text-ink-300">One WhatsApp or email in the owner’s language, with the reason and an answer-by date. No login.</p>
+        </li>
+        <li>
+          <p class="font-mono text-sm text-warm">04 · Fix everywhere</p>
+          <div class="wall mt-4 rounded-sm p-2">{{ floorrow('07:30-13:00', '07:30-13:00') }}</div>
+          <p class="mt-4 leading-7 text-ink-300">The approved hours reach 35+ apps. “Every year” means next Christmas happens by itself, with an undo.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  {% set rows = [
+    ('Holiday hours suggested, with the reason', 1, 1, 1),
+    ('Approve, change or decline in one tap', 1, 1, 1),
+    ('“Every year”: next year happens by itself', 1, 1, 1),
+    ('One question when Connect isn’t sure', 1, 1, 1),
+    ('Answer in your own words (“kiinni 26.12.”)', 0, 1, 0),
+    ('See where it shows, and when', 1, 1, 1),
+    ('Undo', 1, 1, 1),
+    ('“We’re closed today”', 1, 1, 1),
+  ] %}
+  <section id="can" class="scroll-mt-8 border-t border-ink-800" aria-labelledby="can-h">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <p class="eyebrow">What it does</p>
+      <h2 id="can-h" class="mt-3 text-4xl font-bold tracking-[-0.025em] text-ink-50">Everything the owner can do, and where.</h2>
+      <p class="mt-3 text-ink-400">A lit window means it works there.</p>
+      <div class="mt-10 overflow-x-auto">
+        <table class="w-full min-w-[34rem] text-[15px]">
+          <thead>
+            <tr class="border-b border-ink-700 text-left font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400">
+              <th scope="col" class="py-3 pr-4 font-medium">For the owner</th>
+              <th scope="col" class="w-28 py-3 text-center font-medium">Web</th>
+              <th scope="col" class="w-28 py-3 text-center font-medium">WhatsApp</th>
+              <th scope="col" class="w-28 py-3 text-center font-medium">Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for name, web, wa, em in rows %}
+            <tr class="border-b border-ink-800">
+              <td class="py-3 pr-4 text-ink-100">{{ name }}</td>
+              {% for v in (web, wa, em) %}<td class="py-3 text-center">{{ lit(v) }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+            {% for name in ['Weekly hours that changed, spotted in reviews', 'Replies to “it was closed” reviews', 'Ask Connect about your listing'] %}
+            <tr class="border-b border-ink-800">
+              <td class="py-3 pr-4 text-ink-400">{{ name }}</td>
+              <td colspan="3" class="py-3 text-center"><span class="tag tag-cli">built, not in the app yet</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-sm text-ink-500">Email works through the one-tap link in the message. SMS works like WhatsApp, with number replies.</p>
+
+      <div class="mt-16 grid gap-12 md:grid-cols-3">
+        {% for head, items in [
+          ('Done for you', ['Works out what customers see right now, and why', 'Predicts the real hours from past years', 'Speaks up only when it’s worth it', 'Stays quiet when every app is right', 'Closed for good? A person checks first', 'New business, no history? One question', 'Learns from every answer', 'Finnish, Swedish, Norwegian, English']),
+          ('Safe by design', ['Nothing changes without the owner’s OK', 'The owner’s own edits always win', 'Opening a link never approves anything', 'Opt-outs and the owner’s channel respected', 'Every step logged, tamper-proof']),
+          ('For Fonecta staff', ['Every message sent, and where it stands', 'Why a listing shows those hours', 'Every suggestion with its evidence']),
+        ] %}
+        <div>
+          <h3 class="h-panel">{{ head }}</h3>
+          <ul class="mt-4 space-y-2.5 text-[15px] leading-6 text-ink-300">
+            {% for i in items %}<li class="border-l-2 border-ink-700 pl-3">{{ i }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="border-t border-ink-800" aria-labelledby="res-h">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <p class="eyebrow">Results</p>
+      <h2 id="res-h" class="mt-3 text-4xl font-bold tracking-[-0.025em] text-ink-50">Measured on Fonecta’s own scorer.</h2>
+      <p class="lede mt-4">3,000 made-up businesses in Finland, Sweden and Norway. Every business is scored by a model that never saw it.</p>
+      <div class="mt-14 grid gap-14 lg:grid-cols-3">
+        <figure>
+          <figcaption>
+            <p class="text-5xl font-bold tracking-[-0.03em] text-warm">72.9%</p>
+            <p class="mt-2 font-semibold text-ink-100">of locked-door lookups prevented</p>
+            <p class="text-sm text-ink-500">Fonecta’s baseline rules: 69.2%. Each window is 1% of the lookups that would hit a locked door.</p>
+          </figcaption>
+          <div class="mt-5 max-w-[15rem]">{{ waffle(72.9, 'ok', 'false') }}</div>
+        </figure>
+        <figure>
+          <figcaption>
+            <p class="text-5xl font-bold tracking-[-0.03em] text-ink-50">3.5%</p>
+            <p class="mt-2 font-semibold text-ink-100">wrong automatic changes</p>
+            <p class="text-sm text-ink-500">10.1% without the check that next year’s model must agree. Each window is 1% of automatic changes; cold ones are wrong.</p>
+          </figcaption>
+          <div class="mt-5 grid max-w-[22rem] grid-cols-2 gap-4">
+            <div><p class="mb-1.5 font-mono text-[11px] text-ink-400">with the check</p>{{ waffle(3.5, 'false') }}</div>
+            <div><p class="mb-1.5 font-mono text-[11px] text-ink-400">without</p>{{ waffle(10.1, 'false') }}</div>
+          </div>
+        </figure>
+        <div class="space-y-10">
+          <div>
+            <p class="text-5xl font-bold tracking-[-0.03em] text-ink-50">61.67</p>
+            <p class="mt-2 font-semibold text-ink-100">suggestion score</p>
+            <p class="text-sm text-ink-500">Fonecta’s baseline rules: 54.49 (+7.2)</p>
+          </div>
+          <div>
+            <p class="text-5xl font-bold tracking-[-0.03em] text-ink-50">36.8</p>
+            <p class="mt-2 font-semibold text-ink-100">for brand-new businesses with no history</p>
+            <p class="text-sm text-ink-500">Fonecta’s baseline rules: 14.2, mostly because Connect doesn’t guess</p>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="try" class="mx-auto max-w-6xl scroll-mt-10 px-5 pb-28" aria-labelledby="try-h">
+  <section id="try" class="scroll-mt-8 border-t border-ink-800" aria-labelledby="try-h">
+    <div class="mx-auto max-w-6xl px-5 py-24">
       <p class="eyebrow">Try it</p>
-      <h2 id="try-h" class="mt-3 font-display text-4xl text-ink-50 sm:text-5xl">Walk down the street.</h2>
-      <p class="lede mt-4">Each shop shows a different situation. Open one to see what its owner sees.</p>
-      <ul class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <h2 id="try-h" class="mt-3 text-4xl font-bold tracking-[-0.025em] text-ink-50">Walk down the street.</h2>
+      <p class="lede mt-4">Six businesses, six situations. Each one’s windows show what the apps say for it on Christmas Eve today.</p>
+      <ul class="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
         {% for s in shops %}
         <li>
-          <a href="/app?b={{ s.eid }}" class="shop group block focus:outline-none">
-            <div class="door-frame rounded-[5px] p-[6px] transition-transform duration-300 group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-gold-200">
-              <div class="glass relative h-56 overflow-hidden rounded-[2px] px-5 pt-5">
-                <p class="gold-leaf pr-14 font-display text-[1.65rem] italic leading-tight">{{ s.name }}</p>
-                <p class="mt-1 font-sign text-xs uppercase tracking-[0.3em] text-ink-400">{{ s.city }}</p>
-                <span class="shop-neon absolute right-4 top-5 font-sign text-sm font-bold uppercase tracking-[0.2em] neon-off transition-all">Open</span>
-                <div class="paper absolute bottom-4 left-5 right-8 rotate-[-1.5deg] px-3.5 pb-3 pt-4 font-hand text-[15px] leading-snug">
-                  <span class="tape -top-3 left-1/2 w-16 -translate-x-1/2 rotate-[3deg]"></span>{{ s.story }}
-                </div>
-              </div>
+          <a href="/app?b={{ s.eid }}" class="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-warm">
+            <p class="text-lg font-bold text-ink-50 group-hover:text-lamp-soft">{{ s.name }}</p>
+            <p class="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">{{ s.city }}</p>
+            <div class="mt-3 transition-transform duration-300 group-hover:-translate-y-0.5">
+              <div class="roof"></div>
+              <div class="wall rounded-b-sm p-2">{{ floorrow(s.xmas_eve) }}</div>
             </div>
+            <p class="mt-1.5 font-mono text-[11px] text-ink-500">24 Dec: {{ s.xmas_eve }}</p>
+            <p class="mt-3 text-[15px] leading-6 text-ink-300">{{ s.story }} <span class="text-warm transition-transform group-hover:translate-x-1">Open →</span></p>
           </a>
         </li>
         {% endfor %}
       </ul>
-    </section>
-  </main>
+    </div>
+  </section>
 
   <footer class="border-t border-ink-800">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-sm text-ink-500">
-      <span>Team Connect · Fonecta challenge · Since AI Hackathon 2026</span>
+      <span>Team Connect, Fonecta challenge, Since AI Hackathon 2026</span>
       <nav class="flex flex-wrap gap-x-5 gap-y-1" aria-label="Team tools">
         <span class="text-ink-600">Team tools:</span>
         <a class="hover:text-ink-200" href="/demo">Message demo</a>
@@ -241,7 +257,7 @@
         <a class="hover:text-ink-200" href="/suggest">Suggestions</a>
         <a class="hover:text-ink-200" href="/ops">Fonecta staff</a>
       </nav>
-      <span class="w-full text-xs text-ink-600">Data: “Connect Suggests simulator, Since AI ry 2026” (CC BY 4.0). All businesses are synthetic.</span>
+      <span class="w-full text-xs text-ink-600">Data: “Connect Suggests simulator, Since AI ry 2026” (CC BY 4.0). All businesses are made up.</span>
     </div>
   </footer>
 </body>
