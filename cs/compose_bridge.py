@@ -105,7 +105,7 @@ def _hours_text(h: str | None) -> str:
 
 def _fallback_card(card, link: str) -> dict:
     name = data.entity(card.entity_id).get("name", card.entity_id)
-    lines = ["Fonecta Connect (automated assistant)", f"Hi {name}! Our suggestion for your upcoming special days:"]
+    lines = ["Connect Suggests (automated assistant)", f"Hi {name}! Our suggestion for your upcoming special days:"]
     for i in card.items:
         lines.append(f"• {i['date']} {_hours_text(i['value'])}  (Google now: {_hours_text(i['shown'])})")
     if card.question:

@@ -1,4 +1,4 @@
-/* Connect: show the work while it happens.
+/* Connect Suggests: show the work while it happens.
  *
  * - A thin bar at the top while a page or an answer loads.
  * - Forms with data-steps (moving to the next day, joining): a card lists what Connect is doing, one

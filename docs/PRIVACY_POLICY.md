@@ -1,8 +1,8 @@
-# Privacy Policy: Connect (hackathon prototype)
+# Privacy Policy: Connect Suggests (hackathon prototype)
 
 *Last updated: 7 November 2026*
 
-**Connect** is a prototype built by Team Connect for Fonecta's challenge at the Since AI Hackathon 2026
+**Connect Suggests** is a prototype built by Team Connect for Fonecta's challenge at the Since AI Hackathon 2026
 (Turku, Finland). It shows how a business could receive opening-hours suggestions by WhatsApp or email, and approve them
 with one tap. It is a demonstration, not a commercial service.
 

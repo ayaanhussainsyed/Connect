@@ -33,7 +33,7 @@ SEASON = 2026
 OPEN_STATES = ("SENT", "HOURS", "YEAR")
 
 T = {
-    "en": {"intro": "Fonecta Connect's automated assistant",
+    "en": {"intro": "Connect Suggests · automated assistant",
            "welcome": "Welcome to Connect, {name}! Before each holiday season I'll check what Google, Apple Maps and AI "
                       "assistants will show, and message you here only if something is wrong. One tap to approve, "
                       "no login.\n\nOne question to start: on public holidays you're usually…",
@@ -47,7 +47,7 @@ T = {
            "done_no": "All set. I'll ask you before each holiday season.",
            "unclear": "Sorry, I didn't catch that. Tap a button, or reply with its number.",
            "stop": "OK, no more messages from Connect.", "digits": "Reply: {items}", "optout": "Reply STOP to opt out."},
-    "fi": {"intro": "Fonecta Connectin automaattinen avustaja",
+    "fi": {"intro": "Connect Suggests · automaattinen avustaja",
            "welcome": "Tervetuloa Connectiin, {name}! Ennen jokaista juhlakautta tarkistan, mitä Google, Apple Maps "
                       "ja tekoälyavustajat näyttävät, ja viestin sinulle vain, jos jokin on pielessä. Yksi napautus "
                       "riittää, ei kirjautumista.\n\nAluksi yksi kysymys: arkipyhinä olette yleensä…",
@@ -61,7 +61,7 @@ T = {
            "unclear": "Anteeksi, en ymmärtänyt. Napauta painiketta tai vastaa sen numerolla.",
            "stop": "Selvä, Connect ei lähetä enää viestejä.", "digits": "Vastaa: {items}",
            "optout": "Vastaa STOP, jos et halua viestejä."},
-    "sv": {"intro": "Fonecta Connects automatiska assistent",
+    "sv": {"intro": "Connect Suggests · automatisk assistent",
            "welcome": "Välkommen till Connect, {name}! Före varje helgsäsong kontrollerar jag vad Google, Apple Maps "
                       "och AI-assistenter visar, och skriver bara hit om något är fel. Ett tryck räcker, ingen "
                       "inloggning.\n\nEn fråga till att börja med: på helgdagar har ni oftast…",
@@ -75,7 +75,7 @@ T = {
            "unclear": "Förlåt, det förstod jag inte. Tryck på en knapp eller svara med dess nummer.",
            "stop": "Okej, Connect skickar inga fler meddelanden.", "digits": "Svara: {items}",
            "optout": "Svara STOP om du inte vill ha meddelanden."},
-    "nb": {"intro": "Fonecta Connects automatiske assistent",
+    "nb": {"intro": "Connect Suggests · automatisk assistent",
            "welcome": "Velkommen til Connect, {name}! Før hver høytid sjekker jeg hva Google, Apple Maps og "
                       "KI-assistenter viser, og skriver bare hit hvis noe er feil. Ett trykk holder, ingen "
                       "innlogging.\n\nFørst ett spørsmål: på helligdager har dere vanligvis…",

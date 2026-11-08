@@ -8,14 +8,44 @@ from __future__ import annotations
 
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
 from urllib.parse import unquote, urlparse
 
 from cs.channels.base import FAILED, SENT, Channel, ChannelNotConfigured, DeliveryRecord, as_outgoing
 from cs.config import settings
 
-DEFAULT_SUBJECT = {"fi": "Fonecta Connect: aukioloajat", "sv": "Connect: öppettider",
-                   "nb": "Connect: åpningstider", "en": "Fonecta Connect: your opening hours"}
+def _tls_context() -> ssl.SSLContext:
+    """Certificates for the TLS handshake. Python builds on macOS often lack the system ones, which makes
+    every secure mail connection fail verification; certifi's bundle is reliable everywhere."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001 - certifi missing: the system certificates
+        return ssl.create_default_context()
+
+
+def _open(u, ctx: ssl.SSLContext):
+    """A connected, encrypted SMTP session. SSL on 465 when asked for; otherwise STARTTLS on 587, and if that
+    port is blocked (some venue networks drop it), SSL on 465, which the big providers also accept."""
+    if u.scheme == "smtps" or u.port == 465:
+        return smtplib.SMTP_SSL(u.hostname, u.port or 465, timeout=8, context=ctx)
+    server = None
+    try:
+        server = smtplib.SMTP(u.hostname, u.port or 587, timeout=6)
+        server.starttls(context=ctx)
+        return server
+    except (smtplib.SMTPException, OSError):
+        if server is not None:
+            try:
+                server.close()
+            except Exception:  # noqa: BLE001
+                pass
+        return smtplib.SMTP_SSL(u.hostname, 465, timeout=8, context=ctx)
+
+
+DEFAULT_SUBJECT = {"fi": "Connect Suggests: aukioloajat", "sv": "Connect Suggests: öppettider",
+                   "nb": "Connect Suggests: åpningstider", "en": "Connect Suggests: your opening hours"}
 
 
 def is_configured() -> bool:
@@ -53,11 +83,7 @@ class EmailChannel(Channel):
         try:
             # 8 s: a blocked mail port (some venue networks) must not stall the owner's reply for long;
             # on failure the router falls back to the outbox (the on-screen phone).
-            if u.scheme == "smtps" or u.port == 465:
-                server = smtplib.SMTP_SSL(u.hostname, u.port or 465, timeout=8)
-            else:
-                server = smtplib.SMTP(u.hostname, u.port or 587, timeout=8)
-                server.starttls()
+            server = _open(u, _tls_context())
             with server:
                 if user:
                     server.login(user, pwd)

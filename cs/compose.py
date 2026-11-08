@@ -45,7 +45,7 @@ WHATSAPP_MAX_BUTTONS = 3         # WhatsApp interactive reply buttons
 SMS_LIMIT = 480                  # "kept short": a few concatenated segments
 CHANNEL_LIMITS = {"WHATSAPP": WHATSAPP_BODY_LIMIT, "SMS": SMS_LIMIT}
 TEMPLATE_PARAM_LIMIT = 900       # our cap for the WhatsApp template's {{1}} (one line)
-DEFAULT_BRAND = "Fonecta Connect"
+DEFAULT_BRAND = "Connect Suggests"
 
 # Bases whose evidence is the owner's own past: stated plainly. Everything else is phrased as
 # a question and the hours get a "?" (peer claims are rejected more often).
@@ -67,7 +67,7 @@ EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 # ---------------------------------------------------------------------------
 T: dict[str, dict[str, str]] = {
     "fi": {
-        "disclosure": "{brand}in automaattinen avustaja",
+        "disclosure": "{brand} · automaattinen avustaja",
         "hi": "Hei {name}!",
         "intro": "{title} – ehdotuksemme:",
         "title_xmas": "Joulun ja uudenvuoden aukioloajat",
@@ -112,10 +112,10 @@ T: dict[str, dict[str, str]] = {
         "q_habit": "Yksi kysymys: oletteko yleensä kiinni arkipyhinä?",
         "q_other_eg": "muut ajat (esim. {hours})",
         "subject": "{title} – ehdotuksemme",
-        "subject_other": "Fonecta Connect: aukioloajat",
+        "subject_other": "Connect Suggests: aukioloajat",
     },
     "sv": {
-        "disclosure": "{brand}s automatiska assistent",
+        "disclosure": "{brand} · automatisk assistent",
         "hi": "Hej {name}!",
         "intro": "{title} – vårt förslag:",
         "title_xmas": "Öppettider över jul och nyår",
@@ -163,7 +163,7 @@ T: dict[str, dict[str, str]] = {
         "subject_other": "Connect: öppettider",
     },
     "nb": {
-        "disclosure": "{brand}s automatiske assistent",
+        "disclosure": "{brand} · automatisk assistent",
         "hi": "Hei {name}!",
         "intro": "{title} – vårt forslag:",
         "title_xmas": "Åpningstider i jul og nyttår",
@@ -211,7 +211,7 @@ T: dict[str, dict[str, str]] = {
         "subject_other": "Connect: åpningstider",
     },
     "en": {
-        "disclosure": "{brand}'s automated assistant",
+        "disclosure": "{brand} · automated assistant",
         "hi": "Hi {name}!",
         "intro": "{title} – our suggestion:",
         "title_xmas": "Christmas and New Year hours",
@@ -256,7 +256,7 @@ T: dict[str, dict[str, str]] = {
         "q_habit": "One question: are you usually closed on public holidays?",
         "q_other_eg": "other hours (e.g. {hours})",
         "subject": "{title} – our suggestion",
-        "subject_other": "Fonecta Connect: your opening hours",
+        "subject_other": "Connect Suggests: your opening hours",
     },
 }
 

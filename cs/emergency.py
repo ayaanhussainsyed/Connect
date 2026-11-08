@@ -151,7 +151,7 @@ def handle_emergency(entity_id: str, day: date | str | None = None, hours: str =
         token = links.sign(em["id"], f"owner:{entity_id}", ttl=timedelta(hours=12))
         link = f"{(base_url or links.settings.public_base_url).rstrip('/')}/em/{token}"
         contact = compose_bridge.contact(entity_id)
-        compose_bridge.send(entity_id, {"text": f"Fonecta Connect: confirm the change for {dates[0]}: {link}",
+        compose_bridge.send(entity_id, {"text": f"Connect Suggests: confirm the change for {dates[0]}: {link}",
                                         "buttons": [], "composer": "emergency"},
                             kind="FOLLOWUP", card_id=f"em:{em['id']}", lang=contact["lang"], channel=contact["channel"],
                             db=db)

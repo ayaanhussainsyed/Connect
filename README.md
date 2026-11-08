@@ -1,4 +1,4 @@
-# Connect
+# Connect Suggests
 
 **Team Connect · Fonecta's challenge “Connect Suggests – Customer Approves” · Since AI Hackathon 2026 (Turku, 6–8 Nov 2026)**
 
@@ -403,7 +403,7 @@ Plus **what Google shows now** (100% match; production: the Yext Entities API) a
 
 Example (Finnish, WhatsApp, first contact):
 ```
-Fonecta Connectin automaattinen avustaja
+Connect Suggests · automaattinen avustaja
 Hei Kahvila Aurora! Joulun ja uudenvuoden aukioloajat – ehdotuksemme:
 • to 24.12. 7.30–13 (viime vuonna sama)
 • pe 25.12. kiinni (viime vuonna sama)

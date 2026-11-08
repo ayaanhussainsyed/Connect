@@ -258,7 +258,7 @@ def _welcome(eid: str) -> None:
         pass
     c = compose_bridge.contact(eid)
     name = data.entity(eid).get("name", eid)
-    text = (f"Fonecta Connect's automated assistant\nWelcome to Connect, {name}! Before each holiday season I'll "
+    text = (f"Connect Suggests · automated assistant\nWelcome to Connect, {name}! Before each holiday season I'll "
             "check what Google, Apple Maps and AI assistants will show, and message you here only if something "
             "is wrong. One tap to approve, no login. Reply STOP any time.")
     compose_bridge.send(eid, {"text": text, "buttons": [], "parts": {}, "composer": "journey"}, kind="FOLLOWUP",
