@@ -18,6 +18,16 @@
 That's **+7.2 points** over the baseline (paired bootstrap 95% CI +6.3 to +8.1). `predictions_2026.csv` is in the repo
 root. Charts are in [`docs/charts/`](docs/charts/).
 
+**The trade-offs, said plainly:**
+- **Precision.** Our precision is 86% against the baseline's 90%. That's a deliberate trade for **433 more exact fixes**.
+- **Harmful suggestions.** 219 against 224 is within noise. On the 2025 back-test it's 211 against 249.
+
+**Pitch deck:** [`deck/Connect_Suggests_pitch.pdf`](deck/Connect_Suggests_pitch.pdf) (also as `.pptx`).
+**Supporting document:** [`deck/Connect_Suggests_supporting_document.pdf`](deck/Connect_Suggests_supporting_document.pdf),
+which explains the how and the why behind every slide.
+
+*Connect Suggests. It knows you're closed on Christmas before you tell it.*
+
 ---
 
 ## Contents
@@ -91,7 +101,7 @@ Before designing anything, we measured the problem. Every number is reproducible
 | Owner entries are accurate but biased | 99% match the truth, but owners enter 39% of special days against 2% of normal days | Train the open/closed model on true hours, not on entries (a trap many solutions fall into) |
 | The provided peer file leaks the future | `peer_benchmarks.csv` pools 2023–2025, so it contains the answers in a 2025 back-test | We compute peer statistics ourselves, only from entries made before the snapshot |
 | Closed doors are the main harm | 63% of needed changes are "shown open, actually closed" | Open/closed flips need the strongest evidence |
-| **Silence is the real bottleneck** | In the 2025 pilot, **53% of owners never replied** (WhatsApp 65% replied, SMS 50%, email 40%, push 32%) | Design for the owner who doesn't answer, not just for the one who does |
+| **Silence is the real bottleneck** | In the 2025 pilot, **53% of suggestions got no reply** (52% of owners). Reply rate per suggestion: WhatsApp 65%, SMS 50%, email 40%, push 32% | Design for the owner who doesn't answer, not just for the one who does |
 | Trust depends on the reason | Owners accepted 95% of suggestions based on their own history, but only 81% of peer-based ones | Lead with the owner's own history; phrase peer-based suggestions as a question |
 | Apps update at very different speeds | Google ~2 min, Apple Maps ~2 days, **AI assistants and Foursquare ~7 days** (`listings.json`) | Every date gets an "answer by" deadline so every app shows it in time |
 
@@ -110,7 +120,7 @@ All five steps run end to end on the **real Yext sandbox**. The sandbox entity `
 
 | ID | Feature | How |
 |---|---|---|
-| A1 | **What Google shows now** | `cs/display.py`. It reproduces Fonecta's displayed hours on 100% of dev rows (11,100/11,100) and the back-test (11,118/11,118). It fixes four cases where the provided baseline is wrong: closed-for-good timing, entries made on the snapshot day, versions effective on the snapshot day, and seasonal reopening restoring the earlier hours |
+| A1 | **What Google shows now** | `cs/display.py`. It reproduces Fonecta's displayed hours on 100% of dev rows (11,100/11,100) and the back-test (11,118/11,118). Fonecta's own sample code (`examples/baseline.py`) gets **86** of the 2026 dev rows wrong. We fix the four cases it gets wrong: closed-for-good timing, entries made on the snapshot day, versions effective on the snapshot day, and seasonal reopening restoring the earlier hours |
 | A2 | Days to check | The targets file. A live calendar reproduces it exactly (bonus) |
 | A3 | Suggestions with reasons | `cs/suggest/`. Every suggestion carries evidence with dataset references; it's exported to the database and `predictions_2026.csv` |
 | A4 | **Preventing wrong suggestions** | Calibrated probabilities, then the action with the best expected points under the scorer's exact table (FLAG included), with a tuned extra margin for open↔closed flips. Plus unit-tested guardrails: never contradict an owner's entry; never past dates; valid hours only; no messages to opted-out owners; no suggestions to listings closed for good |
@@ -131,10 +141,10 @@ that the straightforward loop doesn't solve.
 
 | Problem inside the brief | What we built | Measured / status |
 |---|---|---|
-| **More than half of owners never answer** (pilot: 53%), so "suggest + approve" doesn't reach them | **★ Season Autopilot:** one pre-filled card per season with two equal buttons, **Approve** and **Approve + every year**, plus a one-sentence scope. Next season the agreed hours are applied ≥ 14 days ahead and the owner gets a note with an undo. **It only applies a learned fact if this year's model agrees (P ≥ 0.5); otherwise it asks** | Blind re-application gets open/closed wrong 10.1% of the time; with the agreement check, **3.5%** (95% exact). Coverage of next season's at-risk lookups at a 12% grant rate: 38.0% vs 33.8% with the card alone (44.4% at 30%, 51.6% at 50%). The grant rates are assumptions; Fonecta's simulator can't measure button design, so that's an A/B test for production |
+| **More than half of owners never answer** (pilot: 53% of suggestions got no reply), so "suggest + approve" doesn't reach them | **★ Season Autopilot:** one pre-filled card per season with two equal buttons, **Approve** and **Approve + every year**, plus a one-sentence scope. Next season the agreed hours are applied ≥ 14 days ahead and the owner gets a note with an undo. **It only applies a learned fact if this year's model agrees (P ≥ 0.5); otherwise it asks** | Blind re-application gets open/closed wrong 10.1% of the time; with the agreement check, **3.5%** (95% exact). Coverage of next season's at-risk lookups at a 12% grant rate: 38.0% vs 33.8% with the card alone (44.4% at 30%, 51.6% at 50%). The grant rates are assumptions; Fonecta's simulator can't measure button design, so that's an A/B test for production |
 | Owners need to answer **in time for every app** | **Per-publisher deadlines:** "Answer by 17.12 so AI assistants show it on 24.12", from each publisher's update speed | Built into every card |
 | **Uncertain dates:** guessing risks a wrong flip, staying silent misses a fix | **One smart question:** the date where an answer gains the most expected points (value of information over the model) | +0.50 points per business vs +0.09 for a random date (150 businesses; the app asks about the best date *not already on the card*, so a question never repeats a suggestion). Honestly: the gain comes from *choosing* the date; the answer barely moves other dates |
-| **"Copy last year" misses half the changes** | The score engine: two seasons back, linked holidays, unbiased training, leak-free peers | +7.2 points, fewer harmful (§5) |
+| **"Copy last year" misses half the changes** | The score engine: an exact rebuild of what each app shows, two seasons back (worth +5.9 points on its own), training on true hours instead of biased entries, leak-free peer statistics, and a calibrated decision rule with a safety margin | +7.2 points, fewer harmful (§5) |
 | **Unplanned closures** (illness, a burst pipe), the brief's locked door, which planned-holiday tools miss | **"Closed today":** the owner texts "kiinni tänään" or taps a button. It's live on Google within minutes, ends by itself, and **the reason is never stored** (GDPR: health data). Long closures use Yext `reopenDate` | Built and tested |
 | **Nobody else should overwrite the owner** | **The owner always wins:** a re-read before every write cancels our change if the owner changed that date meanwhile | Built and tested on the sandbox |
 | **"Why?" must never be invented** | Evidence stored with every suggestion; **Ask Connect (Graph RAG):** a per-business knowledge graph in MongoDB. Claude answers only from retrieved facts, with a citation on every sentence, and a check rejects any date or time not in the facts | Built: the owner asks in the message thread or on the card page; see the examples below |
@@ -202,7 +212,7 @@ problem, plus several product mechanisms we haven't seen in listings tools. We d
   - Facts always come from data.
   - **Graph RAG:** retrieval follows typed edges, not embeddings; answers must cite a fact for every sentence, and a
     verifier rejects any unsupported date, time or number.
-  - GPT-6 Astra is available as an independent judge.
+  - An OpenAI-compatible key (GPT-6 Astra) can be configured, but nothing in the app or the score calls it.
 
 **What is novel, as far as we found:**
 1. **Earned, scoped standing permission with a model-agreement check:** auto-apply only what the owner agreed to *and*
@@ -215,6 +225,8 @@ problem, plus several product mechanisms we haven't seen in listings tools. We d
 
 **What we found that *didn't* help, and say so:**
 - the habit model adds no points to the score;
+- linked holidays add no measurable points either (62.05 without them, against 61.67 with). What does help is
+  everything from the business's other holidays taken together (−1.3 points without it);
 - peers, reviews, user edits and events add nothing on top of own history;
 - blind autopilot is unsafe.
 
@@ -245,7 +257,7 @@ cp .env.example .env    # then fill in what you need (below)
 | `MONGODB_URI`, `MONGODB_DB` | The app, the audit log, the knowledge graph |
 | `LINK_SECRET`, `PUBLIC_BASE_URL` | Signed no-login links (e.g. `http://127.0.0.1:5050`) |
 | `YEXT_SANDBOX_KEY`, `YEXT_SANDBOX_ENTITY_ID` | Writing to the real Yext sandbox |
-| `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | GPT-6 Astra (Azure) |
+| `OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` | Optional. Not called by the app or the score |
 | `ANTHROPIC_FOUNDRY_BASE_URL`, `ANTHROPIC_FOUNDRY_API_KEY`, `CLAUDE_MODEL`, `CLAUDE_FAST_MODEL` | Claude via Microsoft Foundry |
 | `LLM_ENABLED=0` | Run everything without LLMs |
 | `WHATSAPP_*`, `SMTP_*` | Real message delivery. Otherwise messages go to the on-screen outbox. The template is in [`docs/WHATSAPP_TEMPLATE.md`](docs/WHATSAPP_TEMPLATE.md) |
@@ -289,7 +301,7 @@ own coding harness, agentit (flat black, hairline borders, Lora headings), with 
 3,017 businesses and live through a season. Connect does everything on its own schedule; **Continue** only moves time
 forward (in production a daily job does that, `scripts/tick.py`):
 
-1. **Join** (`/start`): pick your business and how Connect reaches you (WhatsApp, email or SMS; one channel only).
+1. **Join** (`/start`): pick your business and how Connect reaches you (WhatsApp or email; one channel only). Real WhatsApp messages go to a test phone, and taps or replies made on that phone come back through Meta's signed webhook and show on the page within seconds.
 2. **Welcome, on that channel** (onboarding, `cs/onboarding.py`): "On public holidays you're usually: Closed / Shorter
    hours / Open as normal", then "every year?". The answers become Connect's memory.
 3. **1 December:** Connect checks your listing and sends **one** card. *Why Connect thinks so* shows the evidence and
@@ -298,6 +310,13 @@ forward (in production a daily job does that, `scripts/tick.py`):
 4. **12 December, life happens:** "closed today", a question for Ask Connect, weekly hours that changed, a reply to an
    "it was closed" review.
 5. **November 2027:** Connect remembers: Autopilot if you said "every year", otherwise a card that says "as you told us".
+6. **Connect's memory** (`/me/memory`, on every day): the business's knowledge graph, with the trained models'
+   predictions on every special day, the owner's remembered answers and their decisions. Click a day to see how next
+   season decides it: the owner's answer is applied by itself only if this year's model gives it at least 50%.
+   Otherwise Connect asks first.
+
+A strip of dates at the top lets you go back to any day you've already reached. Every step shows what Connect is doing
+while it works: the nightly predictions, the read from Yext, Claude reading a reply, the write and the read-back.
 6. **Your year with Connect:** days fixed, customer lookups that saw the right hours, messages, replies.
 
 | Page | What it shows |
@@ -369,7 +388,7 @@ Database tests use a throwaway `connect_suggests_test_*` database that's dropped
 |---|---|---|---|
 | The business's own past entries for the same holiday | The strongest evidence for state and hours | Without own history: 61.7 → **33.4** | Connect's audit log of entered holiday hours (Yext `holidayHours` history) |
 | The entry from two seasons back | Covers years the owner didn't enter | **−5.9 points** without it | The same log, kept ≥ 3 seasons |
-| The business's other holidays | Linked holidays (closed on Christmas Day → closed on New Year's Day 89% vs 36%) | −1.3 points and +21 harmful without it | The same log |
+| The business's other holidays | Summaries of how the owner handled their other holidays (closed on Christmas Day → closed on New Year's Day 89% vs 36%). Linked-holiday features alone add nothing measurable | −1.3 points without all of it together | The same log |
 | Owners' past decisions (2025 pilot) | Answers become history; declines are never repeated | 58.3 → 59.6; harmful 79 → 72 | Connect's suggestion and decision log |
 | The shopping centre's hours | Candidate hours for tenants | Small (−0.15) | Centre integrations or websites |
 
@@ -493,8 +512,9 @@ closed; a question that starts with why/what/when (in any of the four languages)
 graph, with its sources. A "no" is final: an answered offer is never sent again.
 
 **Not finished, at the time of writing:**
-- **Learned facts aren't fed back into next season's card yet.** They're stored and drive autopilot; the effect of
-  learning is measured offline (+1.3 points).
+- **The batch prediction models don't read learned facts.** Owners' answers do shape next season's card in the app
+  ("as you told us", Autopilot and its agreement check), but the stored predictions come from the nightly batch. The
+  effect of learning on the score is measured offline instead (58.3 → 59.6).
 - **No send-time planner.** Contact windows and reminder scheduling (B4) aren't built; the reminder message text exists.
 - **The "season radar" chart for Fonecta's ops** (B9) isn't built.
 
