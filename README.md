@@ -28,6 +28,43 @@ which explains the how and the why behind every slide.
 
 *Connect Suggests. It knows you're closed on Christmas before you tell it.*
 
+## Everything for judging is in this repository
+
+We've pushed every relevant part of the submission here:
+
+| What | Where |
+|---|---|
+| **Predictions for the hidden test**: all 41,755 rows. Fonecta's own `evaluate.py` accepts every row and scores the dev rows at 61.67 | [`predictions_2026.csv`](predictions_2026.csv) |
+| **The working app**: all five steps, no login, WhatsApp and email, writing to the real Yext sandbox | [`app/`](app/), [`cs/`](cs/) |
+| **The prediction engine and its trained models** | [`cs/engine/`](cs/engine/), [`artifacts/models/`](artifacts/models/), [`scripts/train.py`](scripts/train.py) |
+| **Every data finding and model result**, reproducible | [`notebooks/`](notebooks/), [`docs/ML_FINDINGS.md`](docs/ML_FINDINGS.md), [`docs/charts/`](docs/charts/) |
+| **Every customer message as text** | [`docs/MESSAGES.md`](docs/MESSAGES.md) |
+| **Pitch deck and supporting document** | [`deck/`](deck/) |
+| **Tests**: 332 test functions, run with pytest | [`tests/`](tests/) |
+| **The challenge dataset** (synthetic, CC BY 4.0) and the official scorer | [`dataset/`](dataset/) |
+
+## Quick start
+
+These commands check the score and open the app. The full guide, with every setting, is in
+[§7 How to run it](#7-how-to-run-it).
+
+```bash
+git clone https://github.com/ayaanhussainsyed/Connect.git && cd Connect
+python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
+unzip -q dataset/FONECTA_CONNECT_SUGGESTS_2026.zip -d dataset/
+
+# 1. Score the submitted predictions with Fonecta's own scorer (no keys needed) -> Score: 61.67
+.venv/bin/python dataset/FONECTA_CONNECT_SUGGESTS_2026/evaluation/evaluate.py --predictions predictions_2026.csv
+
+# 2. Run the app. It needs MONGODB_URI in .env; Yext, Claude, WhatsApp and email keys are optional.
+cp .env.example .env
+.venv/bin/python scripts/run_mock.py                        # terminal 1: a local Yext mock
+.venv/bin/python -m flask --app app.app run --port 5050     # terminal 2: open http://127.0.0.1:5050
+```
+
+Without keys, messages appear on the on-screen phone instead of a real one, and Claude's parts fall back to rules.
+The predictions and the score don't need any keys.
+
 ---
 
 ## Contents
@@ -243,7 +280,7 @@ git clone <this repo> connect && cd connect
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt          # exact versions: requirements.lock.txt
 
-# Dataset (included in this private repo; synthetic, CC BY 4.0). Unzip it once:
+# Dataset (included in this repo; synthetic, CC BY 4.0). Unzip it once:
 unzip -q dataset/FONECTA_CONNECT_SUGGESTS_2026.zip -d dataset/    # creates dataset/FONECTA_CONNECT_SUGGESTS_2026/
 
 cp .env.example .env    # then fill in what you need (below)
@@ -294,11 +331,11 @@ cp .env.example .env    # then fill in what you need (below)
 .venv/bin/python -m flask --app app.app run --port 5050        # terminal 2, then open http://127.0.0.1:5050
 ```
 
-The interface is deliberately plain: one primary (white) button per screen, no charts. The look follows our team's
-own coding harness, agentit (flat black, hairline borders, Lora headings), with Inter for body text.
+The interface is deliberately plain: white background, black text, one primary button per screen, Lora headings
+and Inter for body text. While Connect works, each screen lists the steps it is running.
 
 **Try it as an owner** (http://127.0.0.1:5050 → *Start as a business owner*). You become the owner of any of the
-3,017 businesses and live through a season. Connect does everything on its own schedule; **Continue** only moves time
+3,017 businesses and live through a season. Connect does everything on its own schedule; **Next** only moves time
 forward (in production a daily job does that, `scripts/tick.py`):
 
 1. **Join** (`/start`): pick your business and how Connect reaches you (WhatsApp or email; one channel only). Real WhatsApp messages go to a test phone, and taps or replies made on that phone come back through Meta's signed webhook and show on the page within seconds.
