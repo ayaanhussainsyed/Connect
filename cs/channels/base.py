@@ -15,7 +15,8 @@ from cs.domain import new_id, utcnow
 
 # Message kinds. Proactive kinds are skipped for opted-out owners; replies to the owner's own
 # action (confirmation, follow-up, emergency) still go out.
-PROACTIVE_KINDS = frozenset({"CARD", "REMINDER", "QUESTION", "AUTOPILOT", "SUGGESTION", "REVIEW_REPLY", "DRIFT"})
+PROACTIVE_KINDS = frozenset({"CARD", "REMINDER", "QUESTION", "AUTOPILOT", "SUGGESTION", "REVIEW_REPLY", "DRIFT",
+                             "WELCOME"})
 REPLY_KINDS = frozenset({"CONFIRMATION", "FOLLOWUP", "EMERGENCY", "READBACK"})
 
 # Delivery statuses

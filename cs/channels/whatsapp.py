@@ -134,7 +134,13 @@ class WhatsAppChannel(Channel):
         return is_configured()
 
     def in_session(self, entity_id: str, now: datetime | None = None) -> bool:
-        """True if the owner wrote to us on WhatsApp in the last 24 hours (free-form allowed)."""
+        """True if the owner wrote to us on WhatsApp in the last 24 hours (free-form allowed).
+
+        ``WHATSAPP_ASSUME_SESSION=1`` (testing only): treat the window as open, so the full card with buttons
+        goes out without an approved template. It works when the test phone has messaged the business number
+        in the last 24 hours (Meta's rule); otherwise Meta refuses and the message falls back to the outbox."""
+        if os.environ.get("WHATSAPP_ASSUME_SESSION") == "1":
+            return True
         try:
             from cs.channels.outbox import last_inbound_at
             last = last_inbound_at(entity_id, channel="WHATSAPP", db=self._db)
@@ -209,6 +215,24 @@ def verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
         return False
     digest = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(signature_header[7:], digest)
+
+
+def entity_for_sender(sender: str | None, db=None) -> str | None:
+    """The business a typed reply is about when it has no button payload and quotes no message:
+    the newest message we actually sent on WhatsApp to that number. In the demo every business
+    shares the one test phone, so this is the business the owner was messaged about last."""
+    from cs.channels.base import mask_address
+    digits = "".join(ch for ch in str(sender or "") if ch.isdigit())
+    if not digits:
+        return None
+    if db is None:
+        from cs.db import get_db
+        db = get_db()
+    doc = db["outbox"].find_one(
+        {"direction": "out", "delivered_via": "WHATSAPP", "status": SENT,
+         "to_masked": {"$in": [mask_address("+" + digits), mask_address(digits)]}},
+        {"_id": 0, "entity_id": 1}, sort=[("at", -1)])
+    return (doc or {}).get("entity_id")
 
 
 def is_template_reply(item: dict) -> bool:

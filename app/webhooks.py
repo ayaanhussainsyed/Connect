@@ -49,7 +49,11 @@ def whatsapp_inbound():
         if not card_id and not item.get("text"):
             results.append({"handled": False, "reason": "no card for this reply"})
             continue
-        res = decide_flow.handle_reply(card_id=card_id, button_id=item.get("button_id"),
+        # A reply typed on the phone ("1", "ok", "kiinni tänään", a question) carries no card id: find the business
+        # we last messaged at that number, so it lands in the right conversation.
+        finder = getattr(whatsapp, "entity_for_sender", None)
+        eid = None if card_id or finder is None else finder(item.get("from"))
+        res = decide_flow.handle_reply(eid, card_id=card_id, button_id=item.get("button_id"),
                                        text=None if item.get("button_id") else item.get("text"), channel="WHATSAPP",
                                        sender=item.get("from"), base_url=request.host_url)
         results.append({k: res.get(k) for k in ("handled", "action", "reason")})

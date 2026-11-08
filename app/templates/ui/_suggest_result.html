@@ -1,0 +1,58 @@
+{% if error %}
+<p class="notice notice--error" role="alert">{{ error }}</p>
+{% elif res %}
+{% set sm = res.summary %}
+<section class="card fade-up">
+  <div class="spread">
+    <div>
+      <p class="kicker">{{ res.entity_id }} · {{ res.info.city }} · {{ res.info.segment | replace('_', ' ') }} · {{ res.info.split }}</p>
+      <h2 class="mt-1">{{ res.info.name }}</h2>
+    </div>
+    <a class="link small" href="/a1?entity_id={{ res.entity_id }}">What customers see now</a>
+  </div>
+  {% if res.fallback %}<p class="notice small mt-2">The ML engine's predictions file is missing, so these rows come from Fonecta's baseline.</p>{% endif %}
+  <p class="small dim mt-2">
+    <span class="white">{{ sm.actions.get('SUGGEST', 0) }}</span> to suggest ·
+    <span class="white">{{ sm.actions.get('FLAG', 0) }}</span> for a person ·
+    <span class="white">{{ sm.actions.get('NO_ACTION', 0) }}</span> stay quiet ·
+    <span class="white">{{ sm.downgraded }}</span> stopped by safety rules
+    {% if sm.dev_rows %}· Dev points <span class="mono white">{{ sm.dev_points }}</span> ({{ sm.dev_ok }}/{{ sm.dev_rows }} rows right, Fonecta's scorer){% endif %}
+  </p>
+</section>
+
+<section class="mt-4">
+  <div class="spread"><h2>Upcoming special days ({{ res.rows | length }})</h2><span class="tiny muted">{{ 'ML engine' if res.engine == 'ml' else 'Fonecta baseline' }} · season {{ res.season }}</span></div>
+  {% if res.rows %}
+  <div class="table-wrap mt-2"><table class="table">
+    <thead><tr><th>Date</th><th>Special day</th><th>Customers see</th><th>Connect would</th><th>Sure</th><th>Why</th><th>Answer key</th></tr></thead>
+    <tbody>
+    {% for r in res.rows %}
+    <tr>
+      <td class="mono">{{ r.date | nice_date }}</td>
+      <td>{{ r.day_key | holiday_name }}</td>
+      <td class="hours dim">{{ r.shown }}</td>
+      <td>
+        {% if r.action == 'SUGGEST' %}<span class="white">Suggest</span> <span class="hours">{{ r.value }}</span>
+        {% elif r.action == 'FLAG' %}<span class="white">Ask a person</span>
+        {% else %}<span class="dim">Stay quiet</span>{% endif %}
+        {% if r.original_action %}<div class="tiny muted">was {{ r.original_action | lower | replace('_', ' ') }}</div>{% endif %}
+        {% if r.action == 'SUGGEST' and not r.message_ok %}<div class="tiny muted">no message (owner opted out)</div>{% endif %}
+      </td>
+      <td class="mono">{{ '%.0f%%' | format(r.probability * 100) if r.probability is not none else '–' }}</td>
+      <td class="small">
+        {% if r.basis %}<span>{{ basis_text.get(r.basis, r.basis | replace('_', ' ') | lower) }}</span>{% endif %}
+        {% if r.evidence %}<ul class="more__body mt-1">{% for e in r.evidence[:4] %}<li>{{ e.detail }} <span class="muted">· {{ e.source }}</span></li>{% endfor %}</ul>{% endif %}
+        {% if r.guardrail_notes %}<ul class="more__body mt-1">{% for n in r.guardrail_notes %}<li>Safety rule: {{ n }}</li>{% endfor %}</ul>{% endif %}
+      </td>
+      <td>
+        {% if r.label %}{{ '✓' if r.label.ok else ('✗' if r.label.points < 0 else '○') }} <span class="hours">{{ r.label.truth_hours }}</span>
+          <div class="tiny muted">{{ r.label.outcome | replace('_', ' ') }} · {{ '%+.2f' | format(r.label.points) }}</div>
+        {% else %}<span class="muted">–</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="small dim mt-2">No special days to check for this business in that season.</p>{% endif %}
+</section>
+{% endif %}

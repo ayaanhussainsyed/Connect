@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=4096)
-def contact(entity_id: str) -> dict:
+def _contact_base(entity_id: str) -> dict:
     c = data.contacts()
     row = c[c["entity_id"] == entity_id]
     lang = data.entity(entity_id)["meta"].get("language", "fi")
@@ -36,6 +36,65 @@ def contact(entity_id: str) -> dict:
             "opted_out": bool(r["opted_out_of_suggestions"]),
             "standing_permission": bool(r["standing_permission_holidays"]),
             "first_name": r.get("contact_first_name", "")}
+
+
+# Demo only: the web app can show a business's messages in English (for judges and testers) instead of the
+# owner's own language, and send them by WhatsApp or email to test real delivery. Off unless the app turns it
+# on, so library code and tests always use the owner's own language and channel.
+DEMO_OVERRIDES = False
+DEMO_CHANNELS = ("WHATSAPP", "EMAIL")
+_TTL = 5.0
+_cache: dict[str, tuple[float, dict]] = {}
+_lang_cache = _cache        # (older name, kept for callers that clear it)
+
+
+def demo_override(entity_id: str) -> dict:
+    """The demo overrides for this business: {"lang": "en"?, "channel": "WHATSAPP"|"EMAIL"?}; {} = none."""
+    if not DEMO_OVERRIDES:
+        return {}
+    import time
+    now = time.monotonic()
+    hit = _cache.get(entity_id)
+    if hit and hit[0] > now:
+        return hit[1]
+    try:
+        doc = dbmod.get_db()["demo_overrides"].find_one({"entity_id": entity_id}, {"_id": 0, "lang": 1, "channel": 1})
+        o = {k: v for k, v in (doc or {}).items() if v}
+    except Exception:  # noqa: BLE001 - no database: the owner's own settings
+        o = {}
+    _cache[entity_id] = (now + _TTL, o)
+    return o
+
+
+def demo_lang(entity_id: str) -> str | None:
+    return demo_override(entity_id).get("lang")
+
+
+def set_demo_override(entity_id: str, db: Database | None = None, **fields: str | None) -> None:
+    """Set (a value) or clear (None) ``lang`` / ``channel`` for this business."""
+    db = db if db is not None else dbmod.get_db()
+    sets = {k: v for k, v in fields.items() if v}
+    unsets = {k: "" for k, v in fields.items() if not v}
+    update: dict = {"$set": {**sets, "at": utcnow()}}
+    if unsets:
+        update["$unset"] = unsets
+    db["demo_overrides"].update_one({"entity_id": entity_id}, update, upsert=True)
+    _cache.pop(entity_id, None)
+
+
+def set_demo_lang(entity_id: str, lang: str | None, db: Database | None = None) -> None:
+    set_demo_override(entity_id, db, lang=lang)
+
+
+def contact(entity_id: str) -> dict:
+    """The owner's contact preferences (channel, language, opt-out, standing permission)."""
+    c = dict(_contact_base(entity_id))
+    o = demo_override(entity_id)
+    if o.get("lang"):
+        c["lang"] = o["lang"]
+    if o.get("channel") in DEMO_CHANNELS:
+        c["channel"] = o["channel"]
+    return c
 
 
 def _hours_text(h: str | None) -> str:
@@ -180,7 +239,8 @@ def thread(entity_id: str, db: Database | None = None, limit: int = 40, card_id:
         out = [{"text": r.get("text") or "", "buttons": r.get("buttons") or [], "kind": r.get("kind", ""),
                 "channel": r.get("channel", ""), "direction": (r.get("direction") or "out").upper(),
                 "at": r.get("at"), "via": r.get("delivered_via") or r.get("status", ""),
-                "card_id": r.get("card_id"), "token": r.get("token")} for r in rows]
+                "card_id": r.get("card_id"), "token": r.get("token"),
+                "button": (r.get("button_payload") or "").split("|", 1)[0] or None} for r in rows]
     except ImportError:
         out = [{"text": m.text, "buttons": m.buttons, "kind": m.kind, "channel": m.channel, "direction": m.direction,
                 "at": m.sent_at, "via": m.composer, "card_id": m.card_id, "token": m.token}

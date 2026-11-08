@@ -1,0 +1,51 @@
+{% extends "ui/base.html" %}
+{% block title %}Join Connect{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block topbar_right %}<a href="/how">How it decides</a>{% endblock %}
+
+{% block content %}
+<section class="fade-up">
+  <a class="link tiny" href="/">&larr; Back</a>
+  <p class="kicker mt-3">Join Connect · about a minute</p>
+  <h1 class="mt-1">Which business is yours?</h1>
+  <p class="sub">Connect looks after the listing Fonecta already manages for you. No password, no app to install.</p>
+  {% if error %}<p class="notice notice--error mt-2" role="alert">{{ error }}</p>{% endif %}
+
+  <form method="post" action="/start" class="card mt-3 stack-lg" data-steps='{{ join_steps | tojson }}'
+        data-steps-title="Joining Connect" data-steps-kicker="About a minute · no password, no app">
+    <label class="field">
+      <span class="field__label">Your business</span>
+      <input class="input" name="business" list="biz" value="{{ picked_name }}" required autocomplete="off"
+             placeholder="Type a name, e.g. Kahvila Aurora">
+      <datalist id="biz">{% for r in businesses %}<option value="{{ r.name }}, {{ r.city }} · {{ r.entity_id }}"></option>{% endfor %}</datalist>
+      <span class="tiny muted">Any of Fonecta's {{ businesses | length }} businesses. For example:
+        {% for eid, n, c in examples %}<a class="link tiny" href="/start?b={{ eid }}">{{ n }}</a>{{ ' · ' if not loop.last }}{% endfor %}</span>
+    </label>
+
+    {% set ch = 'EMAIL' if owner_channel == 'EMAIL' else 'WHATSAPP' %}
+    <div class="field">
+      <span class="field__label">How should Connect reach you?</span>
+      <div class="choice">
+        <label><input type="radio" name="channel" value="WHATSAPP" {{ 'checked' if ch == 'WHATSAPP' }}><span>WhatsApp</span></label>
+        <label><input type="radio" name="channel" value="EMAIL" {{ 'checked' if ch == 'EMAIL' }}><span>Email</span></label>
+      </div>
+      <span class="tiny muted">One channel, only that one. Every message also appears on the phone on the next screen.
+        Real delivery here: WhatsApp {{ ('to ' ~ wa_to) if real_whatsapp else 'off' }} · email {{ ('to ' ~ email_to) if real_email else 'off' }}.</span>
+    </div>
+
+    <div class="field">
+      <span class="field__label">Messages in</span>
+      <div class="choice">
+        <label><input type="radio" name="lang" value="en" checked><span>English</span></label>
+        <label><input type="radio" name="lang" value="owner"><span>The business's own language</span></label>
+      </div>
+    </div>
+
+    <button class="btn btn--primary btn--block" type="submit"><span>Join Connect</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+  </form>
+
+  {% if real_whatsapp %}
+  <p class="tiny muted mt-2">For a real WhatsApp message: first send any message (e.g. "Hi") to Fonecta's test number <span class="mono">+1 555 164 7003</span> from {{ wa_to }}. That's Meta's rule for test numbers.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,6 +1,6 @@
-# Connect: Connect Suggests, Customer Approves
+# Connect
 
-**Team Connect · Fonecta challenge · Since AI Hackathon 2026 (Turku, 6–8 Nov 2026)**
+**Team Connect · Fonecta's challenge “Connect Suggests – Customer Approves” · Since AI Hackathon 2026 (Turku, 6–8 Nov 2026)**
 
 > Holiday hours go wrong because owners forget, and customers walk to a locked door. Fonecta asked for a working demo
 > in which **Connect suggests and the customer approves**. We built the whole chain on the real Yext sandbox, and made
@@ -115,7 +115,7 @@ All five steps run end to end on the **real Yext sandbox**. The sandbox entity `
 | A3 | Suggestions with reasons | `cs/suggest/`. Every suggestion carries evidence with dataset references; it's exported to the database and `predictions_2026.csv` |
 | A4 | **Preventing wrong suggestions** | Calibrated probabilities, then the action with the best expected points under the scorer's exact table (FLAG included), with a tuned extra margin for open↔closed flips. Plus unit-tested guardrails: never contradict an owner's entry; never past dates; valid hours only; no messages to opted-out owners; no suggestions to listings closed for good |
 | A5 | Closed for good → a human | `cs/engine/flags.py`. Closure reviews and "closed" user edits; analytics alone never count |
-| A6 | Stay quiet when it's already right | A result of A4. FI-D0013 and NO-D0015 get no message |
+| A6 | Stay quiet when it's already right | A result of A4. NO-D0015 gets no message. FI-D0013 gets only the one question: the model is unsure about New Year's Eve, and asking is worth +0.61 expected points |
 | A7 | **The message** | `cs/compose.py`. Four languages, local date formats, channel limits (WhatsApp body ≤ 1,024, buttons ≤ 20 chars), an AI disclosure on first contact (EU AI Act Art. 50). Every fact is filled from data, and a test checks every date and time against the suggestion |
 | A8 | **No-login decision** | `cs/links.py`. HMAC-signed, expiring, single-use links. **Opening a link never decides anything**, so email link scanners can't approve by accident. WhatsApp and SMS webhooks; free-text replies read by Claude, with a rule-based fallback and a read-back before saving |
 | A9 | **Apply and confirm** | `cs/yext.py`. Writes only `holidayHours`, so weekly hours are never touched; always sends the full future list (Yext deletes any date left out); drops past dates; **re-reads before writing, so the owner's own change wins**; reads back; confirms per publisher ("Google ~2 min · Apple Maps ~2 days · AI assistants ~7 days · Facebook: not connected") |
@@ -133,11 +133,11 @@ that the straightforward loop doesn't solve.
 |---|---|---|
 | **More than half of owners never answer** (pilot: 53%), so "suggest + approve" doesn't reach them | **★ Season Autopilot:** one pre-filled card per season with two equal buttons, **Approve** and **Approve + every year**, plus a one-sentence scope. Next season the agreed hours are applied ≥ 14 days ahead and the owner gets a note with an undo. **It only applies a learned fact if this year's model agrees (P ≥ 0.5); otherwise it asks** | Blind re-application gets open/closed wrong 10.1% of the time; with the agreement check, **3.5%** (95% exact). Coverage of next season's at-risk lookups at a 12% grant rate: 38.0% vs 33.8% with the card alone (44.4% at 30%, 51.6% at 50%). The grant rates are assumptions; Fonecta's simulator can't measure button design, so that's an A/B test for production |
 | Owners need to answer **in time for every app** | **Per-publisher deadlines:** "Answer by 17.12 so AI assistants show it on 24.12", from each publisher's update speed | Built into every card |
-| **Uncertain dates:** guessing risks a wrong flip, staying silent misses a fix | **One smart question:** the date where an answer gains the most expected points (value of information over the model) | +0.57 points per business vs +0.11 for a random date. Honestly: the gain comes from *choosing* the date; the answer barely moves other dates |
+| **Uncertain dates:** guessing risks a wrong flip, staying silent misses a fix | **One smart question:** the date where an answer gains the most expected points (value of information over the model) | +0.50 points per business vs +0.09 for a random date (150 businesses; the app asks about the best date *not already on the card*, so a question never repeats a suggestion). Honestly: the gain comes from *choosing* the date; the answer barely moves other dates |
 | **"Copy last year" misses half the changes** | The score engine: two seasons back, linked holidays, unbiased training, leak-free peers | +7.2 points, fewer harmful (§5) |
 | **Unplanned closures** (illness, a burst pipe), the brief's locked door, which planned-holiday tools miss | **"Closed today":** the owner texts "kiinni tänään" or taps a button. It's live on Google within minutes, ends by itself, and **the reason is never stored** (GDPR: health data). Long closures use Yext `reopenDate` | Built and tested |
 | **Nobody else should overwrite the owner** | **The owner always wins:** a re-read before every write cancels our change if the owner changed that date meanwhile | Built and tested on the sandbox |
-| **"Why?" must never be invented** | Evidence stored with every suggestion; **Ask Connect (Graph RAG):** a per-business knowledge graph in MongoDB. Claude answers only from retrieved facts, with a citation on every sentence, and a check rejects any date or time not in the facts | Built (CLI); see the examples below |
+| **"Why?" must never be invented** | Evidence stored with every suggestion; **Ask Connect (Graph RAG):** a per-business knowledge graph in MongoDB. Claude answers only from retrieved facts, with a citation on every sentence, and a check rejects any date or time not in the facts | Built: the owner asks in the message thread or on the card page; see the examples below |
 | **Extensibility** | One `Suggestion` loop for weekly-hours drift, review replies, closed-for-good, emergencies and autopilot | Built |
 
 **Ask Connect examples**, live Claude answers with their citations:
@@ -279,16 +279,40 @@ cp .env.example .env    # then fill in what you need (below)
 **The web app:**
 ```bash
 .venv/bin/python scripts/run_mock.py                           # terminal 1: Fonecta's local Yext mock (temp state)
-.venv/bin/python -m flask --app app.app run --port 5050        # terminal 2
+.venv/bin/python -m flask --app app.app run --port 5050        # terminal 2, then open http://127.0.0.1:5050
 ```
+
+The interface is deliberately plain: one primary (white) button per screen, no charts. The look follows our team's
+own coding harness, agentit (flat black, hairline borders, Lora headings), with Inter for body text.
+
+**Try it as an owner** (http://127.0.0.1:5050 → *Start as a business owner*). You become the owner of any of the
+3,017 businesses and live through a season. Connect does everything on its own schedule; **Continue** only moves time
+forward (in production a daily job does that, `scripts/tick.py`):
+
+1. **Join** (`/start`): pick your business and how Connect reaches you (WhatsApp, email or SMS; one channel only).
+2. **Welcome, on that channel** (onboarding, `cs/onboarding.py`): "On public holidays you're usually: Closed / Shorter
+   hours / Open as normal", then "every year?". The answers become Connect's memory.
+3. **1 December:** Connect checks your listing and sends **one** card. *Why Connect thinks so* shows the evidence and
+   the engine's confidence for each date ("91% of similar businesses nearby were closed", "you told us when you joined").
+   Answer on your phone; **your listing on Google** updates beside it.
+4. **12 December, life happens:** "closed today", a question for Ask Connect, weekly hours that changed, a reply to an
+   "it was closed" review.
+5. **November 2027:** Connect remembers: Autopilot if you said "every year", otherwise a card that says "as you told us".
+6. **Your year with Connect:** days fixed, customer lookups that saw the right hours, messages, replies.
 
 | Page | What it shows |
 |---|---|
-| `/a1` | What Google shows now, and why (with a ✓/✗ against Fonecta's label for dev businesses) |
-| `/suggest?entity_id=FI-D0001&engine=ml` | Suggestions with evidence, probability and guardrail notes |
-| `/demo?entity_id=FI-D0001` | **The demo.** A phone thread, the live Yext entity, the five steps lighting up. Scenarios: FI-D0001, FI-D0011 (flag), FI-D0012 (autopilot), FI-D0013 (quiet), FI-D0017 (new customer), SE-D0016; plus "Closed today" |
-| `/c/<token>` | The owner's no-login season card (opened from the message link) |
-| `/ops` | Fonecta's view: the card queue, the audit trail, "verify chain" |
+| `/`, `/start`, `/me` | The owner experience above |
+| `/c/<token>` | The owner's no-login card (from the message link): one "Approve these hours" button, an "every year" checkbox, and quiet links for *Change a day*, *No thanks*, *Closed today?* and *Ask a question*. After approving: where it shows, Undo, and the offer to reply to customers who found the door closed |
+| `/how` | How Connect decides: the five steps, the engine, the safety rules and the measured results |
+| `/businesses`, `/b/<id>` | For Fonecta staff: every business grouped by what Connect will do this season (needs the owner's OK / Autopilot / flagged / already right), and one business's plan with its next action |
+| `/ops` | For Fonecta staff: businesses flagged for a person, every card and its status, the audit log and "Verify" |
+| `/suggest`, `/a1` | For Fonecta staff: every suggestion with evidence, confidence and safety rules; what Google shows on a day, and why |
+
+**Real delivery:** WhatsApp goes to `WHATSAPP_TEST_TO` (Meta's test number only reaches allow-listed phones; send it
+any message first, and `WHATSAPP_ASSUME_SESSION=1` lets the full card go out before the templates are approved); email
+goes to `SMTP_TEST_TO`. Every message also appears on the on-screen phone. SMS stays on screen (Finnish operators block
+unregistered senders).
 
 **Command-line tools:**
 ```bash
@@ -462,9 +486,13 @@ Viime joulupäivänä ~50 ihmistä haki teitä.
 - Ask Connect (Graph RAG);
 - the live calendar.
 
+**In the web app:** weekly-hours drift, review replies and Ask Connect are in the owner's conversation
+(`cs/profile_flow.py`): the console's Check sends the weekly-hours question, the owner approves it with one tap
+(owner-wins re-read, then the Yext write); after hours are set, Connect offers to reply to customers who found the door
+closed; a question that starts with why/what/when (in any of the four languages) is answered from the business's own
+graph, with its sources. A "no" is final: an answered offer is never sent again.
+
 **Not finished, at the time of writing:**
-- **Not in the web demo yet.** Drift, review replies and Ask Connect work from the command line and as library calls,
-  but aren't wired into the `/demo` page yet.
 - **Learned facts aren't fed back into next season's card yet.** They're stored and drive autopilot; the effect of
   learning is measured offline (+1.3 points).
 - **No send-time planner.** Contact windows and reminder scheduling (B4) aren't built; the reminder message text exists.
@@ -486,7 +514,7 @@ Viime joulupäivänä ~50 ihmistä haki teitä.
 |---|---|
 | Flask, Jinja2, Werkzeug, click, itsdangerous | BSD-3-Clause |
 | HTMX (CDN) | BSD-2-Clause |
-| Tailwind CSS (CDN) | MIT |
+| Fonts: Inter, Lora, JetBrains Mono (Google Fonts) | SIL Open Font License 1.1 |
 | pandas, NumPy, SciPy, scikit-learn, joblib | BSD-3-Clause |
 | PyArrow | Apache-2.0 |
 | Matplotlib | Matplotlib licence (PSF-based, BSD-compatible) |

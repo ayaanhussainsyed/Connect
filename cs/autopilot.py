@@ -155,6 +155,12 @@ def run_autopilot(entity_id: str, season_: int = 2026, *, target: str | None = N
     t = data.targets(season_)
     day_type = dict(zip(t.loc[t["entity_id"] == entity_id, "date"], t.loc[t["entity_id"] == entity_id, "day_type"]))
     rows = export.build(season_, engine, today=today, entity_ids=[entity_id])
+    flagged = sum(1 for s in rows if s.action == "FLAG")
+    if flagged:   # likely closed for good: a Fonecta person checks first, so a standing permission applies nothing
+        res["reason"] = "flagged for a Fonecta person (likely closed for good); nothing applied"
+        audit.log("AUTOPILOT_SKIP", {"season": season_, "reason": res["reason"], "flagged_dates": flagged},
+                  entity_id=entity_id, db=db)
+        return res
     ctx = guardrails.make_context(data.SNAPSHOT[season_], today)
     plan = []
     for s in sorted(rows, key=lambda r: r.date):

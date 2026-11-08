@@ -12,11 +12,25 @@ What a card holds (``cs.domain.Card``):
 - ``deadline_by_publisher`` and ``approve_by`` for the earliest date (``cs.confirm``).
 - ``expected_current``: the live holidayHours for the card's dates when the card was built
   (``YextClient.get_holiday_hours``). The writer cancels a date if the owner changed it since.
-- ``question``: the one question from ``cs.engine.api.question_value`` if its value is > 0
+- ``question``: the one question from ``cs.engine.api.question_value`` if its value is > 0, about a
+  date that is not already on the card and that the owner has not told us about
   (skipped if the engine is not importable or fails).
+
+What the owner told us before (``_owner_knowledge``) beats the engine:
+- the newest learned fact for a holiday (``cs.autopilot.newest_facts``: weight 0.95 per season of
+  age, older than 3 seasons ignored) becomes the value, basis ``OWNER_ANSWER`` ("as you told us");
+  if Google already shows it, the date stays quiet;
+- a value the owner declined for a holiday is never suggested again, and after a decline only the
+  owner's own history may suggest something else for that holiday (no peer or model guesses).
+  A fact told after the decline wins over it.
+A date whose live listing already has the value is left off the card (nothing to ask).
+
+One card per business and season: while a card waits for the owner's answer (``WAITING_STATES``),
+``build_card`` and ``send_card`` raise ``CardWaiting`` instead of sending a second message.
 """
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
@@ -24,17 +38,55 @@ from types import SimpleNamespace
 from pymongo.database import Database
 
 from cs import audit, data, db as dbmod, display, export, links
-from cs.domain import CARD_TRANSITIONS, Card, Message, can_transition, utcnow
-from cs.hours import CLOSED
+from cs.domain import CARD_TRANSITIONS, Card, Evidence, Message, can_transition, utcnow
+from cs.hours import CLOSED, REGULAR
 
 log = logging.getLogger(__name__)
 
-OWN_HISTORY_BASES = frozenset({"OWN_LAST_YEAR", "OWN_2_SEASONS"})
+OWN_HISTORY_BASES = frozenset({"OWN_LAST_YEAR", "OWN_2_SEASONS", "OWNER_ANSWER"})
+OWNER_BASES = frozenset({"OWN_LAST_YEAR", "OWN_2_SEASONS", "LINKED_HOLIDAY", "OWNER_ANSWER"})
 QUESTION_STATES = ("closed", "regular", "special")
+WAITING_STATES = ("SCHEDULED", "SENT", "QUESTION_ANSWERED", "NO_REPLY", "REMINDED")
 
 
 class NoCard(Exception):
     """Nothing to send for this business (quiet, flagged, opted out, …). ``str(e)`` says why."""
+
+
+class CardWaiting(NoCard):
+    """A card for this business and season is already waiting for the owner (``.card``)."""
+
+    def __init__(self, card: Card):
+        self.card = card
+        sent = next((h["at"][:10] for h in reversed(card.history) if h.get("to") == "SENT"), None)
+        super().__init__(f"a card is already waiting for the owner's answer ({card.status.lower()}"
+                         + (f" since {sent}" if sent else "") + f", answer by {card.approve_by}): "
+                         "no second message")
+
+
+def waiting_card(entity_id: str, season: int, db: Database | None = None, *, exclude: str | None = None
+                 ) -> Card | None:
+    """The newest card of this business and season that still waits for the owner, if any."""
+    q: dict = {"entity_id": entity_id, "season": season, "status": {"$in": list(WAITING_STATES)}}
+    if exclude:
+        q["id"] = {"$ne": exclude}
+    found = dbmod.find(Card, q, db=_db(db), sort=[("created_at", -1)], limit=1)
+    return found[0] if found else None
+
+
+def close_waiting(entity_id: str, season: int, reason: str = "closed without an answer",
+                  db: Database | None = None) -> list[str]:
+    """Expire every waiting card of this business and season (e.g. a demo reset). Returns their ids."""
+    db = _db(db)
+    path = {"SCHEDULED": ("SENT", "NO_REPLY", "EXPIRED"), "SENT": ("NO_REPLY", "EXPIRED"),
+            "QUESTION_ANSWERED": ("NO_REPLY", "EXPIRED"), "NO_REPLY": ("EXPIRED",), "REMINDED": ("EXPIRED",)}
+    done = []
+    for card in dbmod.find(Card, {"entity_id": entity_id, "season": season,
+                                  "status": {"$in": list(WAITING_STATES)}}, db=db):
+        for state in path[card.status]:
+            transition(card, state, reason, db)
+        done.append(card.id)
+    return done
 
 
 def _db(db: Database | None) -> Database:
@@ -72,16 +124,81 @@ def _item(s, entity_id: str, as_of: date) -> dict:
     }
 
 
-def _question(entity_id: str, season: int, all_rows: list, as_of: date) -> dict | None:
+def _owner_knowledge(rows: list, entity_id: str, season: int, as_of: date, today: date,
+                     db: Database) -> tuple[list, list[dict], dict[str, str]]:
+    """Apply what the owner told us (see the module doc) to the guarded rows.
+
+    Returns (rows, learned, known): ``learned`` says what changed and why (for the audit),
+    ``known`` is {date: closed|regular|special} for the dates the owner already answered."""
+    from cs import guardrails, learn
+    from cs.autopilot import newest_facts
+
+    facts = newest_facts(entity_id, season, db)
+    declined = learn.declined_values(entity_id, db)
+    if not facts and not declined:
+        return rows, [], {}
+    ctx = guardrails.make_context(as_of, today)
+    out, learned, known = [], [], {}
+    for s in rows:
+        k = s.day_key or ""
+        hit, no = facts.get(k), declined.get(k)
+        if s.kind != "HOLIDAY_HOURS" or not s.date or s.action == "FLAG" or not (hit or no):
+            out.append(s)
+            continue
+        fact, weight = hit or (None, 0.0)
+        if fact and no and learn._naive(no["at"]) > learn._naive(fact.created_at):
+            fact = None
+        if fact and fact.value.upper() != "SPECIAL":
+            regular = display.explain_shown(entity_id, s.date, as_of)["regular"]["hours"]
+            value = regular if fact.value == REGULAR else fact.value
+            known[s.date] = "closed" if value == CLOSED else "regular" if value == regular else "special"
+            ev = Evidence(source="OWNER_ANSWER", detail=f"You told us {fact.value} for {fact.date} "
+                          f"(season {fact.season})", ref=f"learned_fact:{fact.id}", weight=round(weight, 3))
+            quiet = value == s.shown
+            fresh = dataclasses.replace(
+                s, action="NO_ACTION" if quiet else "SUGGEST", value=None if quiet else value, basis="OWNER_ANSWER",
+                probability=round(weight, 3), evidence=[ev, *s.evidence], guardrail_notes=[], original_action=None,
+                message_ok=None, auto_apply_ok=None)
+            out.append(guardrails.apply_guardrails(fresh, ctx))
+            learned.append({"date": s.date, "day_key": k, "value": value, "fact_id": fact.id,
+                            "effect": "already shown" if quiet else "as you told us", "engine": s.value})
+            continue
+        if no and s.action == "SUGGEST" and (s.value in no["values"] or s.basis not in OWNER_BASES):
+            why = (f"owner_declined: the owner said no to {', '.join(sorted(no['values']))} for {k} "
+                   f"({', '.join(sorted(no['dates']))})")
+            out.append(dataclasses.replace(s, action="NO_ACTION", value=None, message_ok=False, original_action="SUGGEST",
+                                           guardrail_notes=[*s.guardrail_notes, why]))
+            learned.append({"date": s.date, "day_key": k, "value": s.value, "effect": "declined before",
+                            "declined": sorted(no["values"])})
+            continue
+        out.append(s)
+    return out, learned, known
+
+
+def _same_hours(live: str | None, value: str | None, regular: str | None) -> bool:
+    from cs.hours import normalise
+    if live is None or value is None:
+        return False
+    if live == REGULAR:
+        return value == regular
+    try:
+        return normalise(live) == normalise(value)
+    except ValueError:
+        return False
+
+
+def _question(entity_id: str, season: int, all_rows: list, as_of: date, *, skip: set[str] = frozenset(),
+              known: dict[str, str] | None = None) -> dict | None:
+    """The most valuable date to ask about that is not on the card (``skip``) and not answered before."""
     try:
         from cs.engine.api import question_value
-        ranked = question_value(entity_id, season, {})
+        ranked = question_value(entity_id, season, dict(known or {}))
     except Exception as ex:  # noqa: BLE001 - the card works without a question
         log.info("no question for %s: %s", entity_id, ex)
         return None
     by_date = {s.date: s for s in all_rows}
     for d, value in ranked:
-        if value <= 0 or d not in by_date:
+        if value <= 0 or d not in by_date or d in skip or d in (known or {}):
             continue
         s = by_date[d]
         ex = display.explain_shown(entity_id, d, as_of)
@@ -108,12 +225,33 @@ def build_card(entity_id: str, season: int = 2026, engine: str | None = None, *,
     target = target or default_target(entity_id)
     today = today or date.today()
     as_of = data.SNAPSHOT[season]
+    if save:
+        waiting = waiting_card(entity_id, season, db)
+        if waiting is not None:
+            raise CardWaiting(waiting)
     rows = export.build(season, engine, today=today, entity_ids=[entity_id])
     if not rows:
         raise NoCard(f"{entity_id} has no target days in {season}")
-    send = sorted((s for s in rows if s.action == "SUGGEST" and s.message_ok
-                   and (only_dates is None or s.date in only_dates)), key=lambda s: s.date)
-    question = _question(entity_id, season, rows, as_of) if (ask_question and only_dates is None) else None
+    rows, learned, known = _owner_knowledge(rows, entity_id, season, as_of, today, db)
+    yc = client or yext_client(target, db)
+    try:
+        live = yc.get_holiday_hours(entity_id)
+    finally:
+        if client is None:
+            yc.close()
+    send, already = [], []
+    for s in sorted(rows, key=lambda s: s.date):
+        if s.action != "SUGGEST" or not s.message_ok or (only_dates is not None and s.date not in only_dates):
+            continue
+        if s.date in live and _same_hours(live[s.date], s.value,
+                                          display.explain_shown(entity_id, s.date, as_of)["regular"]["hours"]):
+            already.append(s.date)
+            continue
+        send.append(s)
+    declined = {x["date"] for x in learned if x["effect"] == "declined before"}
+    flagged_rows = any(s.action == "FLAG" for s in rows)   # likely closed for good: a person checks, no question
+    question = (_question(entity_id, season, rows, as_of, skip={s.date for s in send} | declined | set(already),
+                          known=known) if (ask_question and only_dates is None and not flagged_rows) else None)
     if not send and question is None:
         flagged = sum(1 for s in rows if s.action == "FLAG")
         opted = [s for s in rows if s.action == "SUGGEST" and not s.message_ok]
@@ -121,17 +259,14 @@ def build_card(entity_id: str, season: int = 2026, engine: str | None = None, *,
             raise NoCard(f"{flagged} date(s) flagged for staff (likely closed for good); no owner message")
         if opted:
             raise NoCard("the owner opted out of suggestions; nothing is sent")
+        if declined:
+            raise NoCard(f"nothing new to ask: the owner already said no to {', '.join(sorted(declined))}, "
+                         "and Connect does not suggest that again")
         raise NoCard("Google already shows the right hours on every upcoming special day: stay quiet")
 
     items = [_item(s, entity_id, as_of) for s in send]
     dates = [i["date"] for i in items] + ([question["date"]] if question else [])
     first = min(dates)
-    yc = client or yext_client(target, db)
-    try:
-        live = yc.get_holiday_hours(entity_id)
-    finally:
-        if client is None:
-            yc.close()
     contact = compose_bridge.contact(entity_id)
     card = Card(
         entity_id=entity_id, season=season, suggestion_ids=[i["suggestion_id"] for i in items],
@@ -151,6 +286,7 @@ def build_card(entity_id: str, season: int = 2026, engine: str | None = None, *,
             "question": question and {k: question[k] for k in ("date", "value")},
             "approve_by": card.approve_by, "expected_current": card.expected_current, "kind": kind,
             "flagged": sum(1 for s in rows if s.action == "FLAG"),
+            "learned": learned, "already_live": already,
         }, entity_id=entity_id, db=db)
     return card
 
@@ -183,10 +319,14 @@ def transition(card: Card, new: str, reason: str = "", db: Database | None = Non
 @audit.batched
 def send_card(card: Card, db: Database | None = None, *, channel: str | None = None, lang: str | None = None,
               today: date | None = None, base_url: str | None = None) -> tuple[Message, str]:
-    """Sign a link, compose the message, store it (the outbox) and mark the card SENT."""
+    """Sign a link, compose the message, store it (the outbox) and mark the card SENT.
+    Raises ``CardWaiting`` if another card of this business and season still waits for the owner."""
     from cs import compose_bridge
 
     db = _db(db)
+    waiting = waiting_card(card.entity_id, card.season, db, exclude=card.id)
+    if waiting is not None:
+        raise CardWaiting(waiting)
     token = links.sign(card.id, card.owner_id)
     link = links.link_for(token, base_url)
     channel = (channel or card.channel or "OUTBOX").upper()

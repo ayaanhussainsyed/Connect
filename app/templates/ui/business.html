@@ -1,0 +1,157 @@
+{% extends "ui/base.html" %}
+{% block title %}{{ name }} · Connect{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<a href="/businesses">All businesses</a><a href="/ops">Messages &amp; audit</a>{% endblock %}
+
+{% block content %}
+{% set n = row.n_suggest %}
+<div class="split">
+  <section class="stack-lg fade-up">
+    <div>
+      <a class="link tiny" href="/businesses">&larr; All businesses</a>
+      <p class="kicker mt-3">{{ row.city }}{% if row.segment %} · {{ row.segment | replace('_', ' ') }}{% endif %} · {{ entity_id }}</p>
+      <h1 class="mt-1">{{ name }}</h1>
+      <p class="sub">
+        {% if row.status == 'ask' %}{{ n }} special {{ 'day looks' if n == 1 else 'days look' }} wrong on Google this season{% if row.at_risk %}: those days got about {{ row.at_risk }} customer lookups last season{% endif %}. Connect asks the owner once.
+        {% elif row.status == 'autopilot' %}The owner said &ldquo;every year&rdquo;. Connect sets the {{ n }} {{ 'day' if n == 1 else 'days' }} itself and tells the owner, with Undo.
+        {% elif row.status == 'flag' %}This business looks closed for good. A Fonecta person checks first; the owner isn't messaged.
+        {% elif row.status == 'optout' %}The owner opted out of suggestions, so Connect sends nothing.
+        {% else %}Google already shows the right hours on every upcoming special day.{% endif %}
+      </p>
+      <form method="post" action="/start" class="mt-2" data-steps='{{ join_steps | tojson }}'
+            data-steps-title="Joining Connect as {{ name }}" data-steps-kicker="The owner's season, day by day">
+        <input type="hidden" name="business" value="{{ entity_id }}"><input type="hidden" name="channel" value="WHATSAPP"><input type="hidden" name="lang" value="en">
+        <button class="link small" type="submit">Play this owner's season, day by day &rarr;</button>
+      </form>
+    </div>
+
+    {# The one next action #}
+    <div>
+      {% if waiting %}
+        <p class="notice">The owner already has this season's card ({{ waiting.status | lower | replace('_', ' ') }}). Connect waits for the answer; it never asks twice. Answer as the owner on the phone, or open the card from it.</p>
+      {% elif row.status in ('ask', 'autopilot', 'flag') %}
+        <form hx-post="/demo/check" hx-target="#result" hx-disabled-elt="find button"
+              hx-on::after-request="if (event.detail.successful) this.remove()">
+          <input type="hidden" name="entity_id" value="{{ entity_id }}">
+          <input type="hidden" name="engine" value="{{ engine }}">
+          <input type="hidden" name="target" value="{{ target }}">
+          <button class="btn btn--primary btn--block" type="submit">
+            <span>{% if row.status == 'ask' %}Send the owner one message{% elif row.status == 'autopilot' %}Set the hours automatically{% else %}Flag for a Fonecta person{% endif %}</span>
+            <span class="btn__arrow" aria-hidden="true">&rarr;</span>
+          </button>
+        </form>
+      {% else %}
+        <form hx-post="/demo/check" hx-target="#result" hx-on::after-request="if (event.detail.successful) this.remove()">
+          <input type="hidden" name="entity_id" value="{{ entity_id }}">
+          <input type="hidden" name="target" value="{{ target }}">
+          <button class="link" type="submit">Check again anyway</button>
+        </form>
+      {% endif %}
+      <div id="result" class="mt-2" aria-live="polite"></div>
+      <form method="post" action="/b/{{ entity_id }}/reset" class="mt-2">
+        <input type="hidden" name="target" value="{{ target }}">
+        <button class="link tiny" type="submit" title="Clears this business's holiday hours on the listing, closes a waiting card and empties the phone. What the owner taught Connect is kept.">Start over (demo reset)</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="spread"><h2>This season</h2>{% if quiet %}<span class="tiny muted">{{ quiet }} other special {{ 'day' if quiet == 1 else 'days' }} already right</span>{% endif %}</div>
+      {% if plan %}
+      <div class="list mt-2">
+        {% for p in plan %}
+        <div class="list__row">
+          <div class="list__main">
+            <div class="list__title">{{ p.date | nice_date }}</div>
+            <div class="list__meta">{{ p.day_key | holiday_name }} · {{ p.why }}</div>
+          </div>
+          <div class="list__value">
+            {% if p.flag %}<span class="tag tag--on">check first</span>
+            {% else %}{% if p.shown %}<span class="hours small strike">{{ p.shown | hours_text }}</span>&nbsp;&nbsp;{% endif %}<span class="hours">{{ p.value | hours_text }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="tiny muted mt-1">Struck through: what customers see on Google now. Right: what Connect will suggest.</p>
+      {% else %}
+      <p class="small dim mt-2">No special day needs a change.</p>
+      {% endif %}
+    </div>
+
+    {% if drift_changes %}
+    <div class="panel">
+      <h3>The weekly hours look out of date</h3>
+      <ul class="more__body mt-2">
+        {% for days, before, after in drift_changes %}
+        <li><span class="white">{{ days[0][:3] | title }}{% if days | length > 1 %}–{{ days[-1][:3] | title }}{% endif %}</span>&nbsp; <span class="hours strike">{{ before | hours_text }}</span> &rarr; <span class="hours white">{{ after | hours_text }}</span></li>
+        {% endfor %}
+      </ul>
+      <p class="tiny muted mt-2">Spotted in customer reviews and Google user edits. Connect asks the owner about these in the same conversation.</p>
+    </div>
+    {% endif %}
+
+    {% if complaints %}
+    <div class="panel">
+      <h3>Customers found the door closed</h3>
+      <p class="small dim mt-1">{{ complaints }} unanswered {{ 'review says' if complaints == 1 else 'reviews say' }} so. Once the hours are set, Connect offers the owner a drafted reply.</p>
+    </div>
+    {% endif %}
+
+    <details class="more">
+      <summary>What happened, step by step</summary>
+      <div class="mt-2" hx-get="/demo/steps?entity_id={{ entity_id }}" hx-trigger="toggle once from:closest details, connect-changed from:body"></div>
+    </details>
+    <details class="more">
+      <summary>What the listing shows now ({{ target }})</summary>
+      <div id="listing" class="mt-2" hx-get="/demo/entity?entity_id={{ entity_id }}&target={{ target }}"
+           hx-trigger="toggle once from:closest details, connect-changed from:body"></div>
+    </details>
+  </section>
+
+  <aside class="fade-up">
+    <p class="kicker">The owner's phone</p>
+    <div class="row-flex mt-1" style="justify-content: space-between">
+      <form method="post" action="/b/{{ entity_id }}/lang" class="toggle" aria-label="Message language">
+        <button name="lang" value="en" class="{{ 'is-on' if msg_lang == 'en' }}" type="submit">English</button>
+        <button name="lang" value="owner" class="{{ 'is-on' if msg_lang == 'owner' }}" type="submit">{{ owner_lang or "Owner's language" }}</button>
+      </form>
+      <form method="post" action="/b/{{ entity_id }}/channel" class="toggle" aria-label="Send by">
+        <button name="channel" value="owner" class="{{ 'is-on' if send_by == 'owner' }}" type="submit">{{ owner_channel }} (owner's)</button>
+        {% if owner_channel != 'WhatsApp' %}<button name="channel" value="WHATSAPP" class="{{ 'is-on' if send_by == 'WHATSAPP' }}" type="submit">WhatsApp</button>{% endif %}
+        {% if owner_channel != 'email' %}<button name="channel" value="EMAIL" class="{{ 'is-on' if send_by == 'EMAIL' }}" type="submit">Email</button>{% endif %}
+      </form>
+    </div>
+    <p class="tiny muted mt-1">Real delivery in this copy of the app: email {{ 'on' if real_email else 'off' }} · WhatsApp {{ 'on' if real_whatsapp else 'off' }}. Messages always appear on this phone too.</p>
+    <div class="phone mt-1">
+      <div class="phone__bar">
+        <span class="phone__who">{{ name }}</span>
+        <span class="tag">{{ channel }}</span>
+      </div>
+      <div id="thread" class="phone__thread" hx-get="/demo/phone?entity_id={{ entity_id }}"
+           hx-trigger="load, connect-changed from:body, every 4s"></div>
+      <form class="phone__reply" hx-post="/demo/reply" hx-target="#thread"
+            hx-on::after-request="if (event.detail.successful) this.reset()">
+        <input type="hidden" name="entity_id" value="{{ entity_id }}">
+        <input class="input" name="text" autocomplete="off" aria-label="Reply as the owner"
+               placeholder="Reply as the owner">
+        <button class="btn" type="submit">Send</button>
+      </form>
+    </div>
+    <p class="tiny muted mt-1">The owner gets this by {{ channel }}{% if msg_lang == 'en' and owner_lang and owner_lang != 'English' %}, really in {{ owner_lang }}; shown in English here{% endif %}.
+      Answer as the owner: tap a button, or type a digit, &ldquo;ok&rdquo;, new hours (&ldquo;24.12. 8-12&rdquo;), &ldquo;closed today&rdquo;, or a question that starts with why / what / when.</p>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Keep the phone scrolled to the newest message (unless the user scrolled up to read).
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread") t.dataset.pinned = (t.scrollHeight - t.scrollTop - t.clientHeight < 40) ? "1" : "0";
+  });
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread" && t.dataset.pinned !== "0") t.scrollTop = t.scrollHeight;
+  });
+</script>
+{% endblock %}

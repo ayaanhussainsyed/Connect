@@ -1,0 +1,12 @@
+{% if not started %}<p class="small muted">Nothing has happened yet for this business. Press &ldquo;Check&rdquo; to start.</p>{% endif %}
+<ol class="steps{{ ' mt-1' if not started }}">
+  {% for s in steps %}
+  <li class="step is-{{ s.state }}">
+    <span class="step__n">{{ '✓' if s.state == 'done' else loop.index }}</span>
+    <div>
+      <div class="step__name">{{ s.label }}</div>
+      <div class="step__text">{{ s.detail if s.detail else s.desc }}</div>
+    </div>
+  </li>
+  {% endfor %}
+</ol>

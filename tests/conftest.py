@@ -26,6 +26,19 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "network: needs network access")
 
 
+@pytest.fixture(autouse=True)
+def no_real_messages(request, monkeypatch):
+    """Tests never message real people: with real keys in .env the WhatsApp and e-mail channels
+    would send to WHATSAPP_TEST_TO / SMTP_TEST_TO. They count as not configured unless the test is
+    marked ``network``. Testing switches from .env (WHATSAPP_ASSUME_SESSION) don't leak into tests either."""
+    monkeypatch.delenv("WHATSAPP_ASSUME_SESSION", raising=False)
+    if request.node.get_closest_marker("network"):
+        return
+    from cs.channels import email, whatsapp
+    monkeypatch.setattr(whatsapp, "is_configured", lambda: False)
+    monkeypatch.setattr(email, "is_configured", lambda: False)
+
+
 @pytest.fixture(scope="session")
 def mongo_test_db():
     """This session's own test database (indexes created); dropped at the end of the session."""
@@ -110,7 +123,8 @@ def flow(mongo_test_db, yext_mock_url, monkeypatch):
     monkeypatch.setenv("LLM_ENABLED", "0")
     httpx.post(f"{yext_mock_url}/mock/reset", timeout=10).raise_for_status()
     for c in ("cards", "decisions", "learned_facts", "permissions", "outbox", "messages", "writes", "link_nonces",
-              "suggestions", "emergencies", "schedules", "reply_context"):
+              "suggestions", "emergencies", "schedules", "reply_context", "onboarding", "journeys", "profile_offers",
+              "demo_overrides"):
         mongo_test_db[c].delete_many({})
 
     def client(target="mock", db=None):

@@ -1,0 +1,13 @@
+{% if p %}
+<p class="small dim">
+  {{ p.date | nice_date }}:
+  {% if p.answer == 'closed' %}<span class="white">closed</span>{% elif p.answer == 'regular' %}regular hours <span class="hours white">{{ p.hours | hours_text }}</span>{% else %}other hours: type them below{% endif %}.
+  Saved when you approve.
+</p>
+{% if p.answer == 'special' %}
+<label class="field mt-1">
+  <span class="field__label">Hours on {{ p.date | nice_date }}</span>
+  <input class="input input--hours" name="answer_hours" form="card-form" autocomplete="off" placeholder="e.g. 10-14">
+</label>
+{% endif %}
+{% endif %}

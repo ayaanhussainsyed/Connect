@@ -51,10 +51,12 @@ class EmailChannel(Channel):
         em["To"] = message.to
         em.set_content(render_body(message.text, message.buttons))
         try:
+            # 8 s: a blocked mail port (some venue networks) must not stall the owner's reply for long;
+            # on failure the router falls back to the outbox (the on-screen phone).
             if u.scheme == "smtps" or u.port == 465:
-                server = smtplib.SMTP_SSL(u.hostname, u.port or 465, timeout=20)
+                server = smtplib.SMTP_SSL(u.hostname, u.port or 465, timeout=8)
             else:
-                server = smtplib.SMTP(u.hostname, u.port or 587, timeout=20)
+                server = smtplib.SMTP(u.hostname, u.port or 587, timeout=8)
                 server.starttls()
             with server:
                 if user:

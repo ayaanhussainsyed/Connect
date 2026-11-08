@@ -1,0 +1,38 @@
+{% extends "ui/base.html" %}
+{% block title %}Connect{% endblock %}
+{% block page_class %}page--mid{% endblock %}
+{% block topbar_right %}<a href="/how">How it decides</a><a href="/businesses">Fonecta staff</a>{% endblock %}
+
+{% block content %}
+<section class="center fade-up hero">
+  <p class="kicker">Fonecta Connect · Suggests</p>
+  <h1 class="hero__title mt-2">Your hours, right on every holiday.</h1>
+  <p class="sub hero__sub">Connect checks what Google, Apple Maps and AI assistants will show on the days that matter. If something is wrong, it sends you one message. You tap once. That's it.</p>
+  <div class="hero__cta mt-4">
+    {% if journey %}
+      <a class="btn btn--primary btn--block" href="/me"><span>Continue as {{ name }}</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></a>
+      <p class="mt-2"><a class="link tiny" href="/start">Start as another business</a></p>
+    {% else %}
+      <a class="btn btn--primary btn--block" href="/start"><span>Start as a business owner</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="options mt-4 stagger">
+  <div class="option">
+    <span class="option__glyph">1</span>
+    <span class="option__title">One message a season</span>
+    <span class="option__desc">Silence when your listing is already right. Never two messages about the same thing.</span>
+  </div>
+  <div class="option">
+    <span class="option__glyph">✓</span>
+    <span class="option__title">One tap, no login</span>
+    <span class="option__desc">Approve on WhatsApp, by SMS or from an email. It's on Google within minutes.</span>
+  </div>
+  <div class="option">
+    <span class="option__glyph">∞</span>
+    <span class="option__title">It learns you</span>
+    <span class="option__desc">Your answers shape next year. Say "every year" and it handles it, with an undo.</span>
+  </div>
+</div>
+{% endblock %}

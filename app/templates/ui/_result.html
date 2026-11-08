@@ -1,0 +1,33 @@
+<div class="card fade-up">
+  <p class="kicker">{{ r.name }}</p>
+  <h2 class="mt-1">{{ r.headline }}</h2>
+  {% if r.text %}<p class="sub">{{ r.text }}</p>{% endif %}
+
+  {% if r.rows %}
+  <div class="list mt-2">
+    {% for row in r.rows %}
+    <div class="list__row">
+      <div class="list__main">
+        <div class="list__title">{{ row.date | nice_date }}</div>
+        <div class="list__meta">{{ row.day_key | holiday_name }}{% if row.day_key and row.why %} · {% endif %}{{ row.why }}</div>
+      </div>
+      <div class="list__value">
+        {% if row.question %}
+          <span class="tag tag--on">one question</span>
+        {% else %}
+          {% if row.shown %}<span class="hours small strike">{{ row.shown | hours_text }}</span>&nbsp;&nbsp;{% endif %}
+          <span class="hours">{{ row.value | hours_text }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if r.kind == 'card' %}<p class="tiny muted mt-1">Struck through: what customers see now. Right: Connect's suggestion.</p>{% endif %}
+  {% endif %}
+
+  {% for x in r.extra %}<p class="small dim mt-2">{{ x }}</p>{% endfor %}
+
+  {% if r.link %}
+  <p class="mt-2"><a class="link" href="{{ r.link }}" target="_blank" rel="noopener">Open the owner's card (no login) &nearr;</a></p>
+  {% endif %}
+</div>

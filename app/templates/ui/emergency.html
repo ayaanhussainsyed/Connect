@@ -1,0 +1,23 @@
+{% extends "ui/base.html" %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}{{ name }} · confirm{% endblock %}
+{% block home_href %}#{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block footer %}<footer class="footer"><span>Fonecta Connect</span></footer>{% endblock %}
+
+{% block content %}
+<section class="fade-up">
+  {% if error %}<p class="notice notice--error mb-3" role="alert">{{ error }}</p>{% endif %}
+  <p class="kicker mt-2">{{ name }}</p>
+  {% if done %}
+    <div class="row-flex mt-1"><span class="ok-mark" aria-hidden="true">✓</span><h1>Saved</h1></div>
+    <p class="sub">{{ name }} shows {{ em.hours | hours_text | lower }} on {{ em.dates | join(', ') }}.</p>
+  {% else %}
+    <h1 class="mt-1">Confirm the change</h1>
+    <p class="sub"><span class="white">{{ em.hours | hours_text }}</span> on {{ em.dates | join(', ') }}. This came from a number we don't know, so we ask you to confirm first.</p>
+    <form method="post" action="/em/{{ token }}/confirm" class="mt-3">
+      <button class="btn btn--primary btn--block" type="submit"><span>Confirm the change</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% if error %}
+<p class="notice notice--error small" role="alert">Couldn't read your listing: {{ error }}</p>
+{% else %}
+<div class="gcard">
+  <div class="spread"><span class="white">{{ name }}</span><span class="tiny muted">{{ 'Yext sandbox' if target == 'sandbox' else 'listing' }} · {{ updated }}</span></div>
+  <p class="tiny muted mt-1">Opening hours on the coming special days</p>
+  <ul class="gcard__rows mt-1">
+    {% for r in rows %}
+    <li class="{{ 'is-set' if r.set }}">
+      <span>{{ r.date | nice_date }} <span class="muted">· {{ r.day_key | holiday_name }}</span></span>
+      <span class="hours">{{ r.hours | hours_text }}{% if r.set %} <span class="gcard__mark" title="Set by Connect after your OK">✓</span>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="tiny muted mt-1">✓ = set by Connect. Without it, Google shows your normal weekly hours.</p>
+</div>
+{% endif %}

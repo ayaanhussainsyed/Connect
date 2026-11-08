@@ -1,0 +1,110 @@
+{% extends "ui/base.html" %}
+{% block title %}Connect's memory · {{ name }}{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<span class="white">{{ name }}</span><a href="/me">Back to your season</a>{% endblock %}
+
+{% block content %}
+{% set m = mem %}{% set cx, cy = m.center %}
+<div class="split">
+  <section class="fade-up">
+    <a class="link tiny" href="/me">&larr; Back to your season</a>
+    <p class="kicker mt-3">Connect's memory · knowledge graph</p>
+    <h1 class="mt-1">What Connect knows about {{ name }}</h1>
+    <p class="sub">This season's special days around your business. On each day: what the trained models predict, what you told Connect, and what you decided. Click a day to see how next season decides it.</p>
+
+    <div class="mem mt-3">
+      <svg viewBox="0 0 760 720" role="img" aria-label="Knowledge graph of {{ name }}: {{ m.days | length }} special days, your answers and the model's predictions">
+        {# context around the business #}
+        {% for x, y, t1, t2 in [(78, 30, 'Similar businesses', m.n_peers ~ ' groups'), (78, 690, 'Reviews', m.n_reviews ~ ' in memory'),
+                                (682, 30, 'Your listing', 'read from Yext'), (682, 690, 'Ask Connect', 'answers from this graph')] %}
+        <line class="mem-spoke" x1="{{ x }}" y1="{{ y }}" x2="{{ cx }}" y2="{{ cy }}"></line>
+        <rect class="mem-ctx" x="{{ x - 66 }}" y="{{ y - 20 }}" width="132" height="40"></rect>
+        <text class="mem-ctx-t" x="{{ x }}" y="{{ y - 3 }}" text-anchor="middle">{{ t1 }}</text>
+        <text x="{{ x }}" y="{{ y + 11 }}" text-anchor="middle">{{ t2 }}</text>
+        {% endfor %}
+        {# linked holidays (what one day tells about another) #}
+        {% for l in m.links %}<line class="mem-link" x1="{{ l.a[0] }}" y1="{{ l.a[1] }}" x2="{{ l.b[0] }}" y2="{{ l.b[1] }}" stroke-opacity="{{ 0.1 + l.w * 0.35 }}"></line>{% endfor %}
+        {% for d in m.days %}<line class="mem-spoke" x1="{{ cx }}" y1="{{ cy }}" x2="{{ d.xy[0] }}" y2="{{ d.xy[1] }}"></line>{% endfor %}
+        <circle class="mem-center" cx="{{ cx }}" cy="{{ cy }}" r="62"></circle>
+        <text class="mem-center-t" x="{{ cx }}" y="{{ cy - 2 }}" text-anchor="middle">{{ name | truncate(20, True, '…') }}</text>
+        <text class="mem-center-s" x="{{ cx }}" y="{{ cy + 14 }}" text-anchor="middle">your business</text>
+        {% for d in m.days %}
+        <g class="mem-day" data-i="{{ d.i }}" tabindex="0" role="button" aria-label="{{ d.name }}, {{ d.date }}">
+          <line class="mem-ray" x1="{{ d.xy[0] }}" y1="{{ d.xy[1] }}" x2="{{ d.d_xy[0] }}" y2="{{ d.d_xy[1] }}"></line>
+          <circle class="mem-node{{ ' is-wrong' if d.action == 'SUGGEST' or (d.fact and d.fact != d.shown) }}" cx="{{ d.xy[0] }}" cy="{{ d.xy[1] }}" r="9"></circle>
+          <circle class="mem-model" cx="{{ d.m_xy[0] }}" cy="{{ d.m_xy[1] }}" r="11"></circle>
+          <text class="mem-model-p" x="{{ d.m_xy[0] }}" y="{{ d.m_xy[1] + 3 }}" text-anchor="middle">{{ d.p if d.p is not none else '·' }}</text>
+          {% if d.fact %}<rect class="mem-fact" x="{{ d.f_xy[0] - 6 }}" y="{{ d.f_xy[1] - 6 }}" width="12" height="12"></rect>{% endif %}
+          {% if d.decision %}<rect class="mem-dec" x="{{ d.d_xy[0] - 5 }}" y="{{ d.d_xy[1] - 5 }}" width="10" height="10" transform="rotate(45 {{ d.d_xy[0] }} {{ d.d_xy[1] }})"></rect>{% endif %}
+          <text class="mem-label" x="{{ d.label_xy[0] }}" y="{{ d.label_xy[1] - 1 }}" text-anchor="{{ d.anchor }}">{{ d.name | truncate(20, True, '…') }}</text>
+          <text class="mem-label-dim" x="{{ d.label_xy[0] }}" y="{{ d.label_xy[1] + 11 }}" text-anchor="{{ d.anchor }}">{{ d.short }}</text>
+        </g>
+        {% endfor %}
+      </svg>
+    </div>
+    <ul class="mem-legend">
+      <li><span class="mem-key mem-key--model">86</span> the model's prediction, % sure</li>
+      <li><span class="mem-key mem-key--fact"></span> your answer, in memory</li>
+      <li><span class="mem-key mem-key--dec"></span> your decision this season</li>
+      <li><span class="mem-key mem-key--wrong"></span> wrong on Google now</li>
+      <li><span class="mem-key mem-key--link"></span> linked holidays</li>
+    </ul>
+  </section>
+
+  <aside class="fade-up">
+    <p class="kicker">How next season is decided</p>
+    <div id="mem-panel" class="panel mt-1 stack-sm">
+      <p>Connect remembers <span class="white">{{ m.n_facts }}</span> {{ 'day' if m.n_facts == 1 else 'days' }} you answered. Next season it checks each answer against the trained model:</p>
+      <ul class="work mt-1">
+        <li class="is-done"><span class="work__mark"></span><span>{{ m.n_apply }} the model agrees with (at least 50%): with &ldquo;every year&rdquo;, Connect sets them itself and tells you, with Undo.</span></li>
+        <li class="is-done"><span class="work__mark"></span><span>{{ m.n_ask }} the model doubts: Connect asks you first.</span></li>
+        <li class="is-done"><span class="work__mark"></span><span>Days with no answer from you: the model's prediction, and one question where an answer is worth most.</span></li>
+      </ul>
+      <p class="small dim">Click a day in the graph to see its evidence.</p>
+    </div>
+    <p class="tiny muted mt-2">Honest note: the prediction models don't read this graph; they run in a nightly batch. The graph is Connect's memory. Ask Connect answers from it (graph RAG, with a source for every fact), and next season your answers in it are checked against the model's probability. Blindly re-using last year's answers is wrong 10.1% of the time; with this check, 3.5%.</p>
+  </aside>
+</div>
+<script>window.MEM_DAYS = {{ m.days | tojson }};</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const panel = document.getElementById("mem-panel");
+  const days = window.MEM_DAYS || [];
+  function row(label, value) {
+    const li = document.createElement("li"); li.className = "is-done";
+    const mark = document.createElement("span"); mark.className = "work__mark";
+    const body = document.createElement("span");
+    const v = document.createElement("span"); v.textContent = value;
+    const t = document.createElement("span"); t.className = "work__tech"; t.textContent = label;
+    body.append(v, t); li.append(mark, body); return li;
+  }
+  function show(i) {
+    const d = days[i]; if (!d) return;
+    document.querySelectorAll(".mem-day").forEach((g) => g.classList.toggle("is-on", +g.dataset.i === i));
+    panel.innerHTML = "";
+    const k = document.createElement("p"); k.className = "kicker"; k.textContent = d.name + " · " + d.date; panel.appendChild(k);
+    const ul = document.createElement("ul"); ul.className = "work mt-1";
+    ul.appendChild(row("what Google shows now", d.shown));
+    if (d.peer) ul.appendChild(row("similar businesses (" + d.peer.n + ", " + d.peer.group + ")", d.peer.closed + "% of those who entered it were closed"));
+    ul.appendChild(row("the trained model (" + (d.basis || "model").toLowerCase().replace(/_/g, " ") + ")",
+      d.action === "SUGGEST" ? d.model + ", " + d.p + "% sure" : "leave it as shown" + (d.p != null ? ", " + d.p + "% that it's right" : "")));
+    ul.appendChild(row("your answer in memory", d.fact ? d.fact + " (" + d.fact_source + ")" : "none yet"));
+    ul.appendChild(row("your decision this season", d.decision || "none"));
+    panel.appendChild(ul);
+    const p = document.createElement("p"); p.className = "small mt-2";
+    if (d.fact) p.textContent = d.apply
+      ? "Next season: the model gives your answer " + d.agree_p + "% (at least 50%), so with “every year” Connect sets " + d.fact + " itself and tells you, with Undo."
+      : "Next season: the model gives your answer only " + (d.agree_p == null ? "an unknown" : d.agree_p + "%") + ", so Connect asks you before changing anything.";
+    else p.textContent = "Next season: no answer from you yet, so Connect goes by the model, and asks if it isn't sure.";
+    panel.appendChild(p);
+  }
+  document.querySelectorAll(".mem-day").forEach((g) => {
+    g.addEventListener("click", () => show(+g.dataset.i));
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(+g.dataset.i); } });
+  });
+})();
+</script>
+{% endblock %}

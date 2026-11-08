@@ -1,0 +1,179 @@
+{% extends "ui/base.html" %}
+{% block title %}{{ name }} · Connect{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<span class="white">{{ name }}</span><a href="/how">How it decides</a>{% endblock %}
+
+{% block content %}
+{% set r = result or {} %}
+<div class="split">
+  <section class="fade-up">
+    <ol class="days" aria-label="Your season, day by day">
+      {% for s in stages %}
+      {% set wd = s.day.split(' ', 1)[0] %}{% set rest = s.day.split(' ', 1)[1] %}
+      <li class="{{ 'is-view' if loop.index0 == idx else ('is-done' if loop.index0 <= now_idx else '') }}">
+        {% if loop.index0 <= now_idx %}<a href="/me?day={{ s.key }}"{% if loop.index0 == idx %} aria-current="page"{% endif %}><span class="days__wd">{{ wd }}</span>{{ rest }}</a>
+        {% else %}<span title="Not yet"><span class="days__wd">{{ wd }}</span>{{ rest }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+
+    {% if looking_back %}
+    <div class="lookback mt-3"><span>You're looking back at {{ stage.day }}. In the story it's now {{ stages[now_idx].day }}.</span>
+      <a class="link small" href="/me">Back to {{ stages[now_idx].day.split(' ')[0] }} &rarr;</a></div>
+    {% endif %}
+
+    <p class="kicker mt-4">{{ stage.day }}</p>
+    <h1 class="mt-1">
+      {% if stage.key == 'season' and r.kind == 'autopilot' %}Connect set your hours for you
+      {% elif stage.key == 'season' and r.kind in ('quiet', 'learned') %}Your listing is already right
+      {% elif stage.key == 'season' and r.kind == 'flagged' %}A Fonecta person will check first
+      {% elif stage.key == 'season' and r.kind == 'waiting' %}Connect is waiting for your answer
+      {% elif stage.key == 'next' and r.kind == 'autopilot' %}Next season: done for you
+      {% else %}{{ stage.title }}{% endif %}
+    </h1>
+
+    {# ---- What happened, in plain words ---- #}
+    <p class="sub">
+      {% if stage.key == 'welcome' %}You joined Connect. It just messaged you on {{ channel }} to say hello and ask how you usually handle public holidays. Answer on your phone; from here Connect works on its own.
+      {% elif stage.key == 'season' %}
+        {% if r.kind == 'card' and not (r.rows | rejectattr('question') | list) %}Three weeks before the holidays, Connect checked your listing by itself. Everything looks right except one day its model isn't sure about, so it sent you <span class="white">one</span> question on {{ channel }}. One tap answers it.
+        {% elif r.kind == 'card' %}Three weeks before the holidays, Connect checked your listing by itself and found what will be wrong. It sent you <span class="white">one</span> message on {{ channel }}. Answer it on your phone: approve, change a day, or ask why.
+        {% elif r.kind == 'autopilot' %}Your account has a standing &ldquo;every year&rdquo; permission, so Connect set the hours itself, only where this year's model agrees, and sent you a short note with Undo. You didn't have to do anything.
+        {% elif r.kind == 'flagged' %}Your listing looks closed for good, so Connect doesn't message you: a Fonecta person checks first.
+        {% elif r.kind == 'error' %}Connect couldn't reach your listing just now: {{ r.text }}
+        {% else %}{{ r.text }}{% endif %}
+      {% elif stage.key == 'life' %}A few days before Christmas. Things come up: tell Connect you're closed today, or ask it anything. Connect also watches the rest of your profile, not just the holidays.
+      {% elif stage.key == 'next' and r.kind == 'autopilot' %}A year later, Connect checked again by itself and remembered. It set <span class="white">{{ r.rows | length }}</span> {{ 'day' if r.rows | length == 1 else 'days' }} for you, where this year's model agrees with what you told it, and sent you a note with Undo.{% if r.asked %} It asks you about the <span class="white">{{ r.asked }}</span> it isn't sure of.{% endif %}
+      {% elif stage.key == 'next' %}A year later, Connect checks again by itself, and this time it remembers what you told it.{% endif %}
+      {% if stage.key == 'next' %}<span class="tiny muted" style="display:block;margin-top:0.5rem">Fonecta's dataset covers one season, so next season is replayed on the same calendar: the dates you see are 2026's. What Connect remembered is from this run.</span>
+      {% elif stage.key == 'year' %}Here is what Connect did for you, and what it cost you.{% endif %}
+    </p>
+
+    {# ---- What Connect did that day: the five steps, each with the model or rule behind it ---- #}
+    {% if chain %}
+    <div class="mt-3">
+      <p class="kicker">What Connect did {{ 'that day' if looking_back else 'today' }}</p>
+      <ol class="chain mt-1">
+        {% for c in chain %}{% set parts = c.step.split(' · ') %}
+        <li class="{{ 'is-wait' if c.wait }}">
+          <span class="chain__step">{% if parts | length > 1 %}{{ ('Step ' ~ parts[0]) if parts[0].isdigit() else parts[0] }}{% endif %}<b>{{ parts[-1] }}</b></span>
+          <div>
+            <div class="chain__text">{% if c.wait %}<span class="spin" aria-hidden="true"></span>{% endif %}{{ c.text }}</div>
+            {% if c.tech %}<span class="chain__tech">{{ c.tech }}{% if c.ours %}<span class="chain__ours" title="Beyond what Fonecta's brief asked for">our addition</span>{% endif %}</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+      <form method="get" action="/me/memory" class="mt-2" data-steps='{{ memory_steps | tojson }}'
+            data-steps-title="Connect's memory of {{ name }}" data-steps-kicker="Knowledge graph + the trained models' predictions">
+        <button class="link small" type="submit">See Connect's memory of your business: the knowledge graph &rarr;</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {# ---- Why Connect thinks so (the engine, made visible) ---- #}
+    {% set ins = insight or {} %}
+    {% if ins.kind == 'season' and ins.plan %}
+      <div class="mt-3">
+        <div class="spread"><p class="kicker">Why Connect thinks so</p>{% if ins.per_day %}<span class="tiny muted">~{{ ins.per_day }} people look you up on a day like this</span>{% endif %}</div>
+        <div class="list mt-1">
+          {% for p in ins.plan %}
+          <div class="list__row list__row--top">
+            <div class="list__main">
+              <div class="list__title">{{ p.date | nice_date }} <span class="dim small">· {{ p.day_key | holiday_name }}</span></div>
+              <ul class="more__body mt-1">
+                {% for e in p.evidence %}<li>{{ e }}</li>{% endfor %}
+                {% if not p.evidence %}<li>{{ p.why }}</li>{% endif %}
+              </ul>
+            </div>
+            <div class="list__value">
+              {% if p.flag %}<span class="tag tag--on">check first</span>
+              {% else %}<div>{% if p.shown %}<span class="hours small strike">{{ p.shown | hours_text }}</span>&nbsp;{% endif %}<span class="hours">{{ p.value | hours_text }}</span></div>
+              {% if p.sure is not none %}<div class="sure mt-1" title="The engine's calibrated confidence"><span style="width: {{ (p.sure * 100) | round | int }}%"></span></div><div class="tiny muted mt-1">{{ (p.sure * 100) | round | int }}% sure</div>{% endif %}{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% set right = ins.right if ins.right is defined else ins.quiet %}
+        <p class="tiny muted mt-1">{{ right }} other special {{ 'day is' if right == 1 else 'days are' }} already right, so Connect doesn't mention {{ 'it' if right == 1 else 'them' }}. Struck through: what Google shows now.</p>
+      </div>
+    {% elif ins.kind == 'next' %}
+      <div class="panel mt-3">
+        <p class="kicker">What Connect remembered</p>
+        {% if ins.facts %}
+        <ul class="more__body mt-1">
+          {% for f in ins.facts %}<li>{{ f.day_key | holiday_name }}: <span class="hours white">{{ f.value | hours_text }}</span> <span class="muted">· {{ {'OWNER_ANSWER': 'you told us', 'ONBOARDING': 'from when you joined', 'PILOT_2025': 'from last year'}.get(f.source, 'you told us') }}</span></li>{% endfor %}
+        </ul>
+        {% else %}<p class="small dim mt-1">Nothing yet: answer a card (or say &ldquo;no thanks&rdquo;) and Connect remembers it.</p>{% endif %}
+        <p class="tiny muted mt-2">{% if ins.every_year %}You said &ldquo;every year&rdquo;: Connect applies these itself, only where this year&rsquo;s model agrees, and tells you with an undo.{% elif ins.said_every_year %}You said &ldquo;every year&rdquo; when you joined, but last season&rsquo;s card wasn&rsquo;t approved, so Connect asks again.{% else %}You didn&rsquo;t say &ldquo;every year&rdquo;, so Connect asks again, using what you told it.{% endif %}</p>
+      </div>
+    {% elif ins.kind == 'year' %}
+      {% set s = ins.summary %}
+      <div class="stats mt-3">
+        <div class="stat"><span class="stat__n">{{ s.fixed }}</span><span class="stat__l">special {{ 'day' if s.fixed == 1 else 'days' }} fixed on every app</span></div>
+        <div class="stat"><span class="stat__n">~{{ s.seen }}</span><span class="stat__l">customer lookups saw the right hours</span></div>
+        <div class="stat"><span class="stat__n">{{ s.started }}</span><span class="stat__l">messages Connect started; the other {{ s.messages - s.started }} answered you</span></div>
+        <div class="stat"><span class="stat__n">{{ s.replies }}</span><span class="stat__l">{{ 'reply' if s.replies == 1 else 'replies' }} from you</span></div>
+      </div>
+      <p class="small dim mt-3">That's the whole job: Connect noticed, asked once, applied it everywhere, and learned for next year.</p>
+    {% endif %}
+
+    {% if stage.key in ('season', 'next') and r.link %}<p class="mt-2"><a class="link small" href="{{ r.link }}" target="_blank" rel="noopener">Open the card the message links to (no login) &nearr;</a></p>{% endif %}
+
+    {# ---- The next day: Connect's work is shown step by step while the server does it ---- #}
+    {% if looking_back %}
+    <a class="btn btn--primary btn--block mt-4" href="/me"><span>Back to {{ stages[now_idx].day }}</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></a>
+    {% elif not last and next_stage %}
+    <form method="post" action="/me/continue" class="mt-4" data-steps='{{ next_steps | tojson }}'
+          data-steps-title="{{ next_stage.day }}" data-steps-kicker="{{ next_stage.about }}">
+      <button class="btn btn--primary btn--block" type="submit"><span>Next: {{ next_stage.day }}</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+    </form>
+    <p class="tiny muted mt-1">{{ next_stage.about }}. The days are sped up for the demo; in real life Connect does this on its own schedule.</p>
+    {% endif %}
+    <div class="row-flex mt-3">
+      <form method="post" action="/me/restart"><button class="link tiny" type="submit">Start again</button></form>
+      <a class="link tiny" href="/start">Be another business</a>
+    </div>
+  </section>
+
+  <aside class="fade-up">
+    <p class="kicker">Your phone</p>
+    <div class="phone mt-1">
+      <div class="phone__bar">
+        <span class="phone__who">Fonecta Connect</span>
+        <span class="tag">{{ channel }}</span>
+      </div>
+      <div id="thread" class="phone__thread" data-poll hx-get="/demo/phone?entity_id={{ eid }}"
+           hx-trigger="load, connect-changed from:body, every 4s"><p class="loading"><span class="spin"></span>Opening your messages…</p></div>
+      <div id="work" class="phone__work" role="status" aria-live="polite" hidden><p class="kicker">Connect is working</p><ul class="work"></ul></div>
+      {% if chips %}
+      <div class="chips">
+        {% for c in chips %}<button type="button" hx-post="/me/say" hx-vals='{{ {"text": c.said} | tojson }}' hx-target="#thread" data-steps='{{ c.steps | tojson }}'>{{ c.label }}</button>{% endfor %}
+      </div>
+      {% endif %}
+      <form class="phone__reply" hx-post="/me/say" hx-target="#thread" data-steps='{{ read_steps | tojson }}'
+            hx-on::after-request="if (event.detail.successful) this.reset()">
+        <input class="input" name="text" autocomplete="off" aria-label="Write a message" placeholder="Write a message">
+        <button class="btn" type="submit">Send</button>
+      </form>
+    </div>
+    <p class="tiny muted mt-1">{% if channel == 'WhatsApp' and real_whatsapp %}Also sent for real to WhatsApp {{ wa_to }}.{% elif channel == 'email' and real_email %}Also sent for real to {{ email_to }}.{% else %}Shown here; real {{ channel }} delivery is off in this copy.{% endif %}</p>
+
+    <p class="kicker mt-4">Your listing on Google</p>
+    <div id="google" class="mt-1" data-poll hx-get="/me/listing" hx-trigger="load, connect-changed from:body, every 6s"><p class="loading"><span class="spin"></span>Reading your listing from Yext…</p></div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread") t.dataset.pinned = (t.scrollHeight - t.scrollTop - t.clientHeight < 40) ? "1" : "0";
+  });
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread" && t.dataset.pinned !== "0") t.scrollTop = t.scrollHeight;
+  });
+</script>
+{% endblock %}

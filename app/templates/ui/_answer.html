@@ -1,0 +1,7 @@
+{% if error %}<p class="error-text" role="alert">{{ error }}</p>
+{% else %}
+<div class="panel mt-1">
+  <p class="small">{{ answer }}</p>
+  {% if sources %}<p class="tiny muted mt-1">From: {{ sources | join(', ') }}</p>{% endif %}
+</div>
+{% endif %}

@@ -1,0 +1,41 @@
+{% extends "ui/base.html" %}
+{% block title %}Suggestions · Connect{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<a href="/">Console</a><a href="/ops">Messages &amp; audit</a><a href="/a1">What Google shows</a>{% endblock %}
+
+{% block content %}
+<section class="fade-up">
+  <p class="kicker">For Fonecta staff · step 2</p>
+  <h1 class="mt-1">What Connect would suggest</h1>
+  <p class="sub">Every upcoming special day for one business: what customers see now, what Connect would do, how sure it is, and why. Safety rules can turn a suggestion into silence; when they do, you see the rule.</p>
+</section>
+
+<form id="suggest-form" action="/suggest" method="get" class="panel mt-3" hx-get="/suggest/result" hx-target="#result">
+  <div class="row-flex" style="align-items: flex-end">
+    <label class="field" style="flex: 2; min-width: 14rem">
+      <span class="field__label">Business</span>
+      <input class="input" id="entity_id" name="entity_id" list="entities" value="{{ form.entity_id }}" required autocomplete="off">
+      <datalist id="entities">
+        {% for o in options %}<option value="{{ o.entity_id }}">{{ o.name }} · {{ o.city }} · {{ o.split }}</option>
+        {% endfor %}
+      </datalist>
+    </label>
+    <label class="field" style="flex: 1; min-width: 10rem">
+      <span class="field__label">Engine</span>
+      <select class="select" id="engine" name="engine">
+        {% for e in engines %}<option value="{{ e }}" {% if e == form.engine %}selected{% endif %}>{{ 'Fonecta baseline' if e == 'baseline' else 'ML engine' }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="field" style="flex: 1; min-width: 10rem">
+      <span class="field__label">Season</span>
+      <select class="select" id="season" name="season">
+        {% for v, text in season_choices %}<option value="{{ v }}" {% if v|string == form.season|string %}selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn btn--primary" type="submit">Show <span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+  </div>
+  <p class="tiny muted mt-1">Type an ID or a name, for example FI-D0001 or Aurora. The full table for every business is in <span class="mono">predictions_2026.csv</span>.</p>
+</form>
+
+<div id="result" class="mt-3" aria-live="polite">{% include "ui/_suggest_result.html" %}</div>
+{% endblock %}

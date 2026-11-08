@@ -1,0 +1,85 @@
+{% extends "ui/base.html" %}
+{% block lang %}{{ card.lang or 'en' }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block title %}{{ name }} · saved{% endblock %}
+{% block home_href %}#{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
+{% block footer %}<footer class="footer"><span>Fonecta Connect · every change is logged and can be undone</span></footer>{% endblock %}
+
+{% block content %}
+{% set r = result or {} %}
+<section class="fade-up">
+  {% if notice %}<p class="notice mb-3" role="status">{{ notice }}</p>{% endif %}
+  <p class="kicker mt-2">{{ name }}</p>
+
+  {% if card.status == 'UNDONE' %}
+    {% set u = r.get('undo') or {} %}
+    <h1 class="mt-1">Undone</h1>
+    <p class="sub">We put back what your listing showed before{% if u.get('restored') %} for {{ u.restored | length }} date(s){% endif %}. Any &ldquo;every year&rdquo; permission from this answer is cancelled.</p>
+    {% if u.get('left_alone') %}<p class="small dim mt-2">Left as you changed them: {{ u.left_alone | join(', ') }}.</p>{% endif %}
+
+  {% elif r.get('applied') %}
+    <div class="row-flex mt-1"><span class="ok-mark" aria-hidden="true">✓</span><h1>Saved</h1></div>
+    <p class="sub">Your hours are on their way to Google and the other apps.</p>
+    <div class="list mt-3">
+      {% for d, h in r.applied.items() %}
+      <div class="list__row"><span>{{ d | nice_date }}</span><span class="hours white">{{ h | hours_text }}</span></div>
+      {% endfor %}
+    </div>
+
+    {% if r.get('where_it_shows') %}
+    <h2 class="mt-4">Where it shows</h2>
+    <p class="small dim mt-1">Each app picks up the change at its own speed.</p>
+    <div class="list mt-2">
+      {% for w in r.where_it_shows %}
+      {% set live = w.status == 'LIVE' %}
+      <div class="list__row">
+        <span class="{{ 'white' if live else 'muted' }}">{{ w.publisher }}</span>
+        <span class="list__value small {{ 'dim' if live else 'muted' }}">{{ w.eta_text }}{% if w.expected_live_at %}<span class="tiny muted mono"> · by {{ w.expected_live_at[:16] | replace('T', ' ') }} UTC</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% if r.where_it_shows[0].source %}<p class="tiny muted mt-1">{{ r.where_it_shows[0].source }}</p>{% endif %}
+    {% endif %}
+
+    {% if r.get('permission') %}
+    <p class="notice notice--ok mt-3"><span class="white">Every year:</span> {{ r.permission.scope.text }} ({{ r.permission.scope.day_keys | map('holiday_name') | join(', ') }})</p>
+    {% endif %}
+
+  {% elif r.get('declined') %}
+    <h1 class="mt-1">No changes</h1>
+    <p class="sub">OK, we won't change anything. You can edit your hours in Connect any time.</p>
+
+  {% else %}
+    <h1 class="mt-1">Thanks</h1>
+    <p class="sub">This card is {{ card.status | lower | replace('_', ' ') }}.</p>
+  {% endif %}
+
+  {% if r.get('cancelled') %}<p class="small dim mt-2">Not changed, because the listing was changed after we asked (your own change wins): {{ r.cancelled | join(', ') }}.</p>{% endif %}
+  {% if r.get('blocked') %}<p class="small dim mt-2">Not changed: {% for d, why in r.blocked.items() %}{{ d }} ({{ why }}){% if not loop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+  {% if r.get('declined') and r.get('applied') %}<p class="small dim mt-2">Left as they are: {{ r.declined | join(', ') }}.</p>{% endif %}
+  {% if r.get('error') %}<p class="notice notice--error mt-3" role="alert">{{ r.error }}. Your answer is saved; we'll retry.</p>{% endif %}
+
+  {% if review_done %}
+    <p class="notice notice--ok mt-4">{{ 'Your reply is saved and goes up under the review.' if review_done == 'APPROVE' else 'OK, no reply.' }}</p>
+  {% elif review %}
+    <div class="card mt-4">
+      <p class="kicker">One more thing</p>
+      <h2 class="mt-1">A customer found you closed. Reply to them?</h2>
+      <p class="small dim mt-1">{{ review.summary }}</p>
+      {% for d in review.drafts %}<p class="panel small mt-2" style="white-space: pre-line">{{ d }}</p>{% endfor %}
+      <form method="post" action="/c/{{ token }}/review-reply" class="mt-2">
+        <input type="hidden" name="offer_id" value="{{ review.id }}">
+        <button class="btn btn--primary btn--block" type="submit" name="action" value="approve"><span>Send this reply</span><span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+        <div class="links mt-2"><button class="link" type="submit" name="action" value="decline">No reply</button></div>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if card.status in ('APPLIED', 'CONFIRMED') %}
+  <form method="post" action="/c/{{ token }}/undo" class="links mt-4">
+    <button class="link" type="submit">Undo</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}
