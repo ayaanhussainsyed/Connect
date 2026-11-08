@@ -1,10 +1,14 @@
-"""Owner routes (no login): the season card O2, the decision -> confirmation O3, undo.
+"""Owner routes (no login): the season card, the decision and its confirmation, undo, "closed today",
+questions (Ask Connect) and the reply to customers who found the door closed.
 
-    GET  /c/<token>                 the card (or its confirmation, once decided). Never changes state.
-    GET  /c/<token>/preview?answer= HTMX: what the answer means for that date (read-only)
-    POST /c/<token>/decide          consumes the link's "decide" use, handles the decision, shows O3
-    POST /c/<token>/undo            consumes the link's "undo" use, restores the previous hours
-    POST /c/<token>/closed-today    B8 stub (changes nothing yet)
+    GET  /c/<token>                  the card (or its confirmation, once decided). Never changes state.
+    GET  /c/<token>/preview?answer=  HTMX: what the one-question answer means (read-only)
+    POST /c/<token>/decide           consumes the link's "decide" use, handles the decision, shows the result
+    POST /c/<token>/undo             consumes the link's "undo" use, restores the previous hours
+    POST /c/<token>/closed-today     B8: the signed link proves it is the owner, so it applies at once
+    POST /c/<token>/ask              B10: a question about the listing, answered from the business's own graph
+    POST /c/<token>/review-reply     A13: approve the drafted reply to customers who found the door closed
+    GET  /em/<token>, POST /em/<token>/confirm|undo   an emergency from an unknown number: confirm first
 """
 from __future__ import annotations
 
@@ -26,13 +30,33 @@ def _load(token: str):
 
 def _error(e: links.TokenError):
     code = {"expired": 410, "used": 409}.get(e.kind, 400)
-    return render_template("card_error.html", message=str(e), kind=e.kind), code
+    return render_template("ui/error.html", message=str(e), kind=e.kind), code
+
+
+def _review_offer(card) -> dict | None:
+    """The open "reply to the customer" offer for this business, once its hours are applied."""
+    if card.status not in decide_flow.APPLIED_STATES:
+        return None
+    try:
+        from cs import profile_flow
+        profile_flow.offer_review_replies(card.entity_id)
+        offer = profile_flow.open_offer(card.entity_id, profile_flow.REVIEW_REPLY)
+    except Exception:  # noqa: BLE001 - optional
+        return None
+    if not offer:
+        return None
+    return {"id": offer["id"], "drafts": [d.get("value") or "" for d in offer.get("drafts", [])],
+            "summary": offer.get("summary", "")}
 
 
 def _ctx(card, token: str, **extra) -> dict:
     ent = data.entity(card.entity_id)
     return {"card": card, "token": token, "name": ent.get("name", card.entity_id),
-            "open": card.status in decide_flow.OPEN_STATES, "result": card.result, **extra}
+            "open": card.status in decide_flow.OPEN_STATES, "result": card.result or {}, **extra}
+
+
+def _done(card, token: str, **extra):
+    return render_template("ui/card_done.html", **_ctx(card, token, review=_review_offer(card), **extra))
 
 
 @bp.get("/c/<token>")
@@ -42,8 +66,8 @@ def card_page(token: str):
     except links.TokenError as e:
         return _error(e)
     if card.status in decide_flow.OPEN_STATES:
-        return render_template("card.html", **_ctx(card, token, hints={}, errors={}))
-    return render_template("card_done.html", **_ctx(card, token))
+        return render_template("ui/card.html", **_ctx(card, token, errors={}))
+    return _done(card, token)
 
 
 @bp.get("/c/<token>/preview")
@@ -54,11 +78,17 @@ def card_preview(token: str):
         return _error(e)
     answer = request.args.get("answer")
     qd = (card.question or {}).get("date")
-    return render_template("_card_hints.html", card=card, p=season.preview_answer(card, qd, answer))
+    return render_template("ui/_card_hint.html", card=card, p=season.preview_answer(card, qd, answer))
 
 
 def _decision_from_form(card, form) -> dict:
+    """The card form -> the decision for ``decide_flow.handle_decision``.
+
+    ``action`` is approve (default) or decline; the "every year" checkbox (or the older
+    ``action=approve_every_year``) adds the standing permission. A changed hours field is an edit,
+    a ticked "skip" leaves that date alone."""
     action = form.get("action", "approve")
+    every_year = action == "approve_every_year" or (action == "approve" and bool(form.get("every_year")))
     per_date: dict[str, str] = {}
     for item in card.items:
         d = item["date"]
@@ -74,8 +104,8 @@ def _decision_from_form(card, form) -> dict:
     answer = form.get("answer")
     qd = (card.question or {}).get("date")
     return {"per_date": per_date, "ticks": [i["date"] for i in card.items if form.get(f"tick_{i['date']}")],
-            "every_year": action == "approve_every_year",
-            "answer": {qd: answer} if (answer and qd) else None,
+            "every_year": every_year,
+            "answer": {qd: answer} if (answer and qd and action != "decline") else None,
             "answer_hours": (form.get("answer_hours") or "").strip() or None}
 
 
@@ -93,15 +123,15 @@ def card_decide(token: str):
         links.release(token, "decide")
         card = season.load_card(card.id)
         if card.status in decide_flow.OPEN_STATES:
-            return render_template("card.html", **_ctx(card, token, hints={}, errors={"_": str(e)})), 422
-        return render_template("card_done.html", **_ctx(card, token, notice=str(e))), 409
+            return render_template("ui/card.html", **_ctx(card, token, errors={"_": str(e)})), 422
+        return _done(card, token, notice=str(e)), 409
     card = season.load_card(card.id)
     if res.get("status") in decide_flow.OPEN_STATES:   # nothing recorded yet: show what is missing
         links.release(token, "decide")
         errors = {**{d: "Tick the box to confirm this change between open and closed." for d in res["needs_tick"]},
                   **res["invalid"]}
-        return render_template("card.html", **_ctx(card, token, hints={}, errors=errors)), 422
-    return render_template("card_done.html", **_ctx(card, token))
+        return render_template("ui/card.html", **_ctx(card, token, errors=errors)), 422
+    return _done(card, token)
 
 
 @bp.post("/c/<token>/undo")
@@ -113,13 +143,13 @@ def card_undo(token: str):
         return _error(e)
     if not card.batch_ids:
         links.release(token, "undo")
-        return render_template("card_done.html", **_ctx(card, token, notice="There is nothing to undo.")), 409
+        return _done(card, token, notice="There is nothing to undo."), 409
     try:
         decide_flow.undo_decision(card.batch_ids[-1], via="web")
     except decide_flow.DecisionError as e:
         links.release(token, "undo")
-        return render_template("card_done.html", **_ctx(season.load_card(card.id), token, notice=str(e))), 409
-    return render_template("card_done.html", **_ctx(season.load_card(card.id), token))
+        return _done(season.load_card(card.id), token, notice=str(e)), 409
+    return _done(season.load_card(card.id), token)
 
 
 @bp.post("/c/<token>/closed-today")
@@ -130,15 +160,48 @@ def card_closed_today(token: str):
         _, card = _load(token)
         links.consume(token, "emergency")
     except links.TokenError as e:
-        return render_template("_emergency_result.html", error=str(e), em=None)
+        return render_template("ui/_closed_today.html", error=str(e), em=None)
     try:
         em = emergency.handle_emergency(card.entity_id, hours="closed", via="web", verified=True, target=card.target,
                                         base_url=request.host_url)
     except emergency.EmergencyError as e:
         links.release(token, "emergency")
-        return render_template("_emergency_result.html", error=str(e), em=None)
-    return render_template("_emergency_result.html", error=None, em=em,
+        return render_template("ui/_closed_today.html", error=str(e), em=None)
+    return render_template("ui/_closed_today.html", error=None, em=em,
                            undo_token=links.sign(em["id"], card.owner_id))
+
+
+@bp.post("/c/<token>/ask")
+def card_ask(token: str):
+    """B10 on the card page: answered only from this business's own facts, with the sources."""
+    from cs import profile_flow
+    try:
+        _, card = _load(token)
+    except links.TokenError as e:
+        return render_template("ui/_answer.html", error=str(e))
+    q = (request.form.get("q") or "").strip()
+    if not q:
+        return render_template("ui/_answer.html", error="Type a question first.")
+    try:
+        res = profile_flow.ask(card.entity_id, q[:300], "en")
+    except Exception as e:  # noqa: BLE001 - e.g. the database is down
+        return render_template("ui/_answer.html", error=f"Could not answer just now ({type(e).__name__}).")
+    return render_template("ui/_answer.html", error=None, q=q, answer=res["answer"], sources=res["sources"])
+
+
+@bp.post("/c/<token>/review-reply")
+def card_review_reply(token: str):
+    """A13: the owner approves the drafted reply (stored with the Yext call that would post it)."""
+    from cs import profile_flow
+    try:
+        _, card = _load(token)
+    except links.TokenError as e:
+        return _error(e)
+    offer_id = request.form.get("offer_id", "")
+    action = "DECLINE" if request.form.get("action") == "decline" else "APPROVE"
+    res = profile_flow.handle_reply(card.entity_id, f"rr:{offer_id}", button_id=action, channel="WEB")
+    note = None if res.get("handled") else res.get("reason")
+    return _done(season.load_card(card.id), token, review_done=action if res.get("handled") else None, notice=note)
 
 
 def _load_em(token: str):
@@ -157,7 +220,7 @@ def em_page(token: str):
         em = _load_em(token)
     except links.TokenError as e:
         return _error(e)
-    return render_template("emergency_confirm.html", em=em, token=token, name=data.entity(em["entity_id"]).get("name"))
+    return render_template("ui/emergency.html", em=em, token=token, name=data.entity(em["entity_id"]).get("name"))
 
 
 @bp.post("/em/<token>/confirm")
@@ -170,9 +233,9 @@ def em_confirm(token: str):
     except links.TokenError as e:
         return _error(e)
     except emergency.EmergencyError as e:
-        return render_template("emergency_confirm.html", em=em, token=token, error=str(e),
+        return render_template("ui/emergency.html", em=em, token=token, error=str(e),
                                name=data.entity(em["entity_id"]).get("name")), 409
-    return render_template("emergency_confirm.html", em=res, token=token, done=True,
+    return render_template("ui/emergency.html", em=res, token=token, done=True,
                            name=data.entity(em["entity_id"]).get("name"))
 
 
@@ -184,7 +247,7 @@ def em_undo(token: str):
         links.consume(token, "undo")
         emergency.undo_emergency(em["id"])
     except links.TokenError as e:
-        return render_template("_emergency_result.html", error=str(e), em=None)
+        return render_template("ui/_closed_today.html", error=str(e), em=None)
     except emergency.EmergencyError as e:
-        return render_template("_emergency_result.html", error=str(e), em=None)
-    return render_template("_emergency_result.html", error=None, em=None, undone=True)
+        return render_template("ui/_closed_today.html", error=str(e), em=None)
+    return render_template("ui/_closed_today.html", error=None, em=None, undone=True)

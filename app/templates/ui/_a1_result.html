@@ -1,0 +1,61 @@
+{% if error %}
+<p class="notice notice--error" role="alert">{{ error }}</p>
+{% elif result %}
+{% set ex = result.ex %}
+{% set lab = result.label %}
+<section class="card fade-up">
+  <div class="spread">
+    <div>
+      <p class="kicker">{{ ex.entity_id }} · {{ result.info.city }} · {{ result.info.segment | replace('_', ' ') }} · {{ result.info.split }} · as of {{ ex.as_of }}</p>
+      <h2 class="mt-1">{{ ex.name }}</h2>
+    </div>
+    <a class="link small" href="/suggest?entity_id={{ ex.entity_id }}&amp;season={{ 2025 if ex.as_of.startswith('2025') else 2026 }}">What Connect would suggest</a>
+  </div>
+  <div class="list mt-2">
+    <div class="list__row">
+      <div class="list__main"><div class="list__title">Customers see on {{ ex.date | nice_date }}</div>
+        <div class="list__meta">{{ source_names.get(ex.source, ex.source) }} · {{ ex.summary }}</div></div>
+      <div class="list__value"><span class="hours" data-testid="shown">{{ ex.shown }}</span></div>
+    </div>
+    <div class="list__row">
+      <span class="dim small">Regular {{ ex.weekday | capitalize }} ({{ 'published before 2024' if ex.regular.version_effective_from == 'before-2024' else 'effective ' ~ ex.regular.version_effective_from }})</span>
+      <span class="hours">{{ ex.regular.hours }}</span>
+    </div>
+    {% if ex.regular.restored_from %}
+    <div class="list__row"><span class="dim small">Seasonal rule: history lists {{ ex.regular.listed_hours }}; the reopening restores the hours from {{ ex.regular.restored_from }}</span><span></span></div>
+    {% endif %}
+    <div class="list__row">
+      <span class="dim small">Holiday exception{% if ex.entry %} · entered {{ ex.entry.entered_at }} · {{ ex.entry.source }}{% if ex.earlier_entries %} · replaced {{ ex.earlier_entries }} earlier{% endif %}{% endif %}</span>
+      <span class="hours">{% if ex.entry %}{{ 'regular hours' if ex.entry.is_regular_hours else ex.entry.hours }}{% else %}<span class="muted small">none before this date</span>{% endif %}</span>
+    </div>
+    {% if ex.entries_after_as_of %}<div class="list__row"><span class="dim small">Not visible yet: {{ ex.entries_after_as_of }} entered on or after {{ ex.as_of }}</span><span></span></div>{% endif %}
+  </div>
+  {% if lab %}
+  <p class="small mt-2">{{ '✓' if lab.match else '✗' }} {{ 'Matches' if lab.match else 'Differs from' }} Fonecta's answer key (shown <span class="hours">{{ lab.displayed }}</span>).
+    True hours <span class="hours white">{{ lab.truth }}</span>{% if lab.truth != ex.shown %}: <span class="white">wrong for customers, Connect should notice</span>{% else %}: right, Connect should stay quiet{% endif %}.</p>
+  {% else %}
+  <p class="tiny muted mt-2">No answer key for this row (only dev businesses on target dates, as of 6 Nov).</p>
+  {% endif %}
+</section>
+
+<section class="mt-4">
+  <div class="spread"><h2>Upcoming special days ({{ result.upcoming | length }})</h2><span class="tiny muted">&ldquo;needs a fix&rdquo; = customers would see wrong hours</span></div>
+  {% if result.upcoming %}
+  <div class="table-wrap mt-2"><table class="table">
+    <thead><tr><th>Date</th><th>Special day</th><th>Customers see</th><th>Because of</th><th>Answer key</th><th>True hours</th></tr></thead>
+    <tbody>
+    {% for r in result.upcoming %}
+    <tr>
+      <td class="mono">{{ r.weekday }} {{ r.date }}</td>
+      <td>{{ r.day_key | holiday_name }}{% if r.event_id %} <span class="muted">({{ r.event_id }})</span>{% endif %}</td>
+      <td class="hours">{{ r.shown }}</td>
+      <td class="dim">{{ source_names.get(r.source, r.source) }}</td>
+      <td>{% if r.label %}{{ '✓' if r.label.match else '✗' }} <span class="hours dim">{{ r.label.displayed }}</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+      <td>{% if r.label %}<span class="hours">{{ r.label.truth }}</span>{% if r.label.truth != r.shown %} <span class="tag tag--on">needs a fix</span>{% endif %}{% else %}<span class="muted">–</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="small dim mt-2">This business has no special days to check in that season.</p>{% endif %}
+</section>
+{% endif %}

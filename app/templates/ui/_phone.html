@@ -1,0 +1,23 @@
+{% if link %}<a class="phone__pin" href="{{ link }}" target="_blank" rel="noopener">Open the card <span aria-hidden="true">&nearr;</span>{% if status %}<span class="tag">{{ status | lower | replace('_', ' ') }}</span>{% endif %}</a>{% endif %}
+{% if note %}<p class="notice small" role="status">{{ note }}</p>{% endif %}
+{% if messages %}
+  {% for m in messages %}
+  {% set owner = m.direction == 'IN' %}
+  {% set tapped = {'APPROVE': 'Approve', 'APPROVE_EVERY_YEAR': 'Approve + every year', 'EDIT': 'Edit',
+                   'DECLINE': 'No thanks', 'UNDO': 'Undo', 'STOP': 'Stop', 'YES': 'Yes', 'NO': 'No',
+                   'Q_CLOSED': 'Closed', 'Q_REGULAR': 'Regular hours', 'Q_OTHER': 'Other hours'} %}
+  <div class="bubble {{ 'bubble--out' if owner else 'bubble--in' }}">{{ m.text or ('Tapped: ' ~ tapped.get(m.button, m.button | lower | replace('_', ' ')) if m.button else '[tapped a button]') }}
+    {%- if m.buttons and not owner %}
+    <div class="bubble__buttons">
+      {% for b in m.buttons %}
+      <button type="button" hx-post="/demo/reply" hx-target="#thread"
+              hx-vals='{"entity_id": "{{ entity_id }}", "button_id": "{{ b.id }}", "card_id": "{{ m.card_id or '' }}"}'>{{ b.title }}</button>
+      {% endfor %}
+    </div>
+    {%- endif %}
+    <span class="bubble__meta">{{ (m.kind or '') | lower | replace('_', ' ') }}{% if m.channel %} · {{ m.channel | lower }}{% endif %}{% if m.via and m.via != m.channel %} · {{ m.via | lower }}{% endif %}{% if m.at %} · {{ m.at.strftime('%H:%M') }}{% endif %}</span>
+  </div>
+  {% endfor %}
+{% elif not note %}
+  <p class="phone__empty">No messages yet. Press &ldquo;Check&rdquo;: Connect messages the owner here only if something needs fixing.</p>
+{% endif %}

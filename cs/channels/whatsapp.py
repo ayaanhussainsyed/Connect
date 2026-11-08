@@ -211,6 +211,24 @@ def verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
     return hmac.compare_digest(signature_header[7:], digest)
 
 
+def entity_for_sender(sender: str | None, db=None) -> str | None:
+    """The business a typed reply is about when it has no button payload and quotes no message:
+    the newest message we actually sent on WhatsApp to that number. In the demo every business
+    shares the one test phone, so this is the business the owner was messaged about last."""
+    from cs.channels.base import mask_address
+    digits = "".join(ch for ch in str(sender or "") if ch.isdigit())
+    if not digits:
+        return None
+    if db is None:
+        from cs.db import get_db
+        db = get_db()
+    doc = db["outbox"].find_one(
+        {"direction": "out", "delivered_via": "WHATSAPP", "status": SENT,
+         "to_masked": {"$in": [mask_address("+" + digits), mask_address(digits)]}},
+        {"_id": 0, "entity_id": 1}, sort=[("at", -1)])
+    return (doc or {}).get("entity_id")
+
+
 def is_template_reply(item: dict) -> bool:
     """True for a quick-reply tap on a template (the tap that opens the 24 h session)."""
     return item.get("type") == "button"

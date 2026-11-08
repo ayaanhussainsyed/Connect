@@ -1,0 +1,1 @@
+{% if res.ok %}<span class="white">✓ chain verified ({{ res.count }} events)</span>{% else %}<span class="error-text">✗ broken at #{{ res.bad_seq }}: {{ res.reason }}</span>{% endif %}

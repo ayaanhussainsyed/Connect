@@ -25,7 +25,8 @@ def test_get_never_decides(flow, client):
     t = _token(card)
     for _ in range(3):   # link scanners / previews may open it many times
         r = client.get(f"/c/{t}")
-        assert r.status_code == 200 and b"Approve + every year" in r.data and b"No thanks" in r.data
+        assert r.status_code == 200 and b"Approve these hours" in r.data and b"No thanks" in r.data
+        assert b'name="every_year"' in r.data          # "every year" is one checkbox, not a second button
     r = client.get(f"/c/{t}/preview?answer=closed")
     assert r.status_code == 200
     assert dbmod.find(Decision, {"card_id": card.id}) == []
@@ -103,13 +104,23 @@ def test_closed_today_from_the_card_page(flow, client):
 
 
 @pytest.mark.mongo
-def test_webhooks(flow, client):
+def test_webhooks(flow, client, monkeypatch):
+    import hashlib
+    import hmac
+    import json
+    monkeypatch.setenv("WHATSAPP_APP_SECRET", "test-secret")       # Meta signs every webhook with the app secret
     card = make_card(flow["db"], [item("2026-12-24", "07:30-13:00")])
     assert client.get("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=x").status_code == 403
     payload = {"entry": [{"changes": [{"value": {"messages": [{
         "from": "358000", "id": "wamid.1", "timestamp": "1", "type": "interactive",
         "interactive": {"button_reply": {"id": f"APPROVE|{card.id}", "title": "Hyväksy"}}}]}}]}]}
-    r = client.post("/webhooks/whatsapp", json=payload)
+    body = json.dumps(payload).encode()
+    sig = "sha256=" + hmac.new(b"test-secret", body, hashlib.sha256).hexdigest()
+    hdr = {"Content-Type": "application/json"}
+    assert client.post("/webhooks/whatsapp", data=body, headers=hdr).status_code == 403        # unsigned
+    assert client.post("/webhooks/whatsapp", data=body,
+                       headers={**hdr, "X-Hub-Signature-256": "sha256=" + "0" * 64}).status_code == 403  # forged
+    r = client.post("/webhooks/whatsapp", data=body, headers={**hdr, "X-Hub-Signature-256": sig})
     assert r.status_code == 200 and r.get_json()["results"][0]["handled"] is True
     assert live(flow) == {"2026-12-24": "07:30-13:00"}
     card2 = make_card(flow["db"], [item("2026-12-31", "10:00-16:00", day_key="NYE")])

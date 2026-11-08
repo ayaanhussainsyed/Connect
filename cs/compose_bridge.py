@@ -180,7 +180,8 @@ def thread(entity_id: str, db: Database | None = None, limit: int = 40, card_id:
         out = [{"text": r.get("text") or "", "buttons": r.get("buttons") or [], "kind": r.get("kind", ""),
                 "channel": r.get("channel", ""), "direction": (r.get("direction") or "out").upper(),
                 "at": r.get("at"), "via": r.get("delivered_via") or r.get("status", ""),
-                "card_id": r.get("card_id"), "token": r.get("token")} for r in rows]
+                "card_id": r.get("card_id"), "token": r.get("token"),
+                "button": (r.get("button_payload") or "").split("|", 1)[0] or None} for r in rows]
     except ImportError:
         out = [{"text": m.text, "buttons": m.buttons, "kind": m.kind, "channel": m.channel, "direction": m.direction,
                 "at": m.sent_at, "via": m.composer, "card_id": m.card_id, "token": m.token}

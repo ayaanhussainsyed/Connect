@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="{% block lang %}en{% endblock %}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a0a0a">
+  {% block meta %}{% endblock %}
+  <title>{% block title %}Connect Suggests{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='connect.css') }}">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="topbar">
+      <a class="wordmark" href="{% block home_href %}/{% endblock %}"><span class="wordmark__dim">fonecta</span>connect</a>
+      <nav class="topbar__right" aria-label="Page">{% block topbar_right %}{% endblock %}</nav>
+    </header>
+
+    {% block main %}
+    <main class="page {% block page_class %}page--mid{% endblock %}">
+      {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+
+    {% block footer %}
+    <footer class="footer">
+      <span>Connect Suggests · Since AI Hackathon 2026 · synthetic data</span>
+      <a href="/ops">Staff: messages &amp; audit</a>
+      <a href="/suggest">Staff: all suggestions</a>
+      <a href="/a1">Staff: what Google shows</a>
+    </footer>
+    {% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

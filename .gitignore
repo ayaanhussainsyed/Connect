@@ -1,7 +1,3 @@
-# secrets — never commit
-.env
-.env.*
-!.env.example
 # local tooling
 .claude/
 # data and large artefacts (dataset: download from the Since AI challenge; CC BY 4.0)

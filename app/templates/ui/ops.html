@@ -1,0 +1,64 @@
+{% extends "ui/base.html" %}
+{% block title %}Staff · Connect Suggests{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<a href="/">Console</a><a href="/suggest">Suggestions</a><a href="/a1">What Google shows</a>{% endblock %}
+
+{% block content %}
+<section class="fade-up">
+  <p class="kicker">For Fonecta staff</p>
+  <h1 class="mt-1">Messages and audit</h1>
+  <p class="sub">Every message Connect sent and where it stands, businesses flagged for a person, and the audit log. Each log entry is chained to the one before it, so &ldquo;Verify&rdquo; shows whether anyone changed history.</p>
+</section>
+
+<section class="mt-4">
+  <div class="spread"><h2>Flagged for a person ({{ flags | length }})</h2><span class="tiny muted">Probably closed for good: never messaged</span></div>
+  {% if flags %}
+  <div class="list mt-2">
+    {% for f in flags %}
+    <div class="list__row"><div class="list__main"><div class="list__title">{{ f.name }} <span class="mono tiny muted">{{ f.entity_id }}</span></div><div class="list__meta">{{ f.reason }}</div></div>
+      <a class="link tiny" href="/a1?entity_id={{ f.entity_id }}">Check</a></div>
+    {% endfor %}
+  </div>
+  {% else %}<p class="small dim mt-2">Nothing flagged yet. Check Pizzeria Torni (FI-D0011) on the console to see one.</p>{% endif %}
+</section>
+
+<section class="mt-4">
+  <div class="spread"><h2>Cards ({{ cards | length }})</h2><span class="tiny muted">One card = one message to one owner for a season</span></div>
+  {% if cards %}
+  <div class="table-wrap mt-2"><table class="table">
+    <thead><tr><th>Business</th><th>Status</th><th>Dates</th><th>Answer by</th><th>Writes to</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    {% for c in cards %}
+    <tr>
+      <td><span class="white">{{ names.get(c.entity_id, '') }}</span> <span class="mono tiny muted">{{ c.entity_id }}</span></td>
+      <td><span class="tag {{ 'tag--on' if c.status in ('APPLIED', 'CONFIRMED') }}">{{ c.status | lower | replace('_', ' ') }}</span></td>
+      <td class="mono">{{ c['items'] | length }}{% if c.question %} <span class="muted">+ question</span>{% endif %}</td>
+      <td class="mono">{{ c.approve_by or '–' }}</td>
+      <td class="dim">{{ c.target }} · {{ c.engine }}</td>
+      <td class="mono dim">{{ c.created_at.strftime('%d.%m. %H:%M') }}</td>
+      <td>{% if links.get(c.id) %}<a class="link tiny" href="{{ links[c.id] }}">Open card</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="small dim mt-2">No cards yet. Check a business on the <a class="link" href="/">console</a>.</p>{% endif %}
+</section>
+
+<section class="mt-4">
+  <div class="spread">
+    <h2>Audit log (latest {{ events | length }})</h2>
+    <span class="row-flex"><span id="verify" class="small" aria-live="polite"></span>
+      <button class="btn btn--small" hx-get="/ops/verify" hx-target="#verify">Verify</button></span>
+  </div>
+  <div class="table-wrap mt-2"><table class="table">
+    <thead><tr><th>#</th><th>When</th><th>Event</th><th>Business</th><th>Hash</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+    <tr><td class="mono muted">{{ e.seq }}</td><td class="mono dim">{{ e.at[:19] | replace('T', ' ') }}</td>
+      <td>{{ e.event_type | lower | replace('_', ' ') }}</td><td class="mono dim">{{ e.entity_id or '' }}</td>
+      <td class="mono muted">{{ e.hash[:12] }}…</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

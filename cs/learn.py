@@ -6,6 +6,8 @@ Learned facts (``learned_facts``):
 - ``revert_batch`` (used by undo) retires the facts of one decision batch and re-activates the
   facts they had superseded.
 - ``active_facts`` = facts with ``superseded_by is None``.
+- ``declined_values``: per holiday, the values the owner said no to (``cs.season`` never suggests
+  them again).
 
 Permissions (``permissions``): ``grant_permission`` (scope = the approved holiday keys and their
 values), ``revoke_permission`` (UNDO / STOP / OPT_OUT), ``active_permissions`` (for the guardrails'
@@ -47,6 +49,33 @@ def record_fact(entity_id: str, day_key: str, date: str, value: str, season: int
 def active_facts(entity_id: str, db: Database | None = None) -> list[LearnedFact]:
     return dbmod.find(LearnedFact, {"entity_id": entity_id, "superseded_by": None}, db=_db(db),
                       sort=[("created_at", -1)])
+
+
+def declined_values(entity_id: str, db: Database | None = None) -> dict[str, dict]:
+    """{day_key: {"values": {hours, …}, "dates": [...], "at": newest decline}}: what the owner said
+    no to on a card (DECLINE decisions, joined to the card item they declined)."""
+    db = _db(db)
+    decs = list(db.decisions.find({"entity_id": entity_id, "decision": "DECLINE", "status": "DECLINED"},
+                                  {"_id": 0, "card_id": 1, "date": 1, "at": 1}))
+    if not decs:
+        return {}
+    cards = {c["id"]: c for c in db.cards.find({"id": {"$in": sorted({d["card_id"] for d in decs})}},
+                                                {"_id": 0, "id": 1, "items": 1})}
+    out: dict[str, dict] = {}
+    for d in decs:
+        items = (cards.get(d["card_id"]) or {}).get("items") or []
+        item = next((i for i in items if i.get("date") == d.get("date")), None)
+        if not item or not item.get("day_key") or not item.get("value"):
+            continue
+        e = out.setdefault(item["day_key"], {"values": set(), "dates": [], "at": d["at"]})
+        e["values"].add(item["value"])
+        e["dates"].append(d["date"])
+        e["at"] = max(_naive(e["at"]), _naive(d["at"]))
+    return out
+
+
+def _naive(t: datetime) -> datetime:
+    return t.replace(tzinfo=None) if t.tzinfo else t
 
 
 def revert_batch(batch_id: str, db: Database | None = None) -> int:

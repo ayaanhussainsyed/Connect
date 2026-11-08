@@ -1,8 +1,0 @@
-{% if error %}<span role="alert" class="bad">{{ error }}</span>
-{% elif undone %}<span class="text-ink-200">Undone: your usual hours are back.</span>
-{% elif em %}
-<span class="ok">✓ Saved: closed {{ em.dates | join(', ') }}.</span>
-{% for w in em.where_it_shows if w.status == 'LIVE' and w.typical_seconds <= 3600 %}{% if loop.first %} Shows on {% endif %}{{ w.publisher }} {{ w.eta_text }}{% if not loop.last %}, {% endif %}{% endfor %}.
-<span class="text-ink-500">Slower apps may not catch a same-day change.</span>
-<button hx-post="/em/{{ undo_token }}/undo" hx-target="#closed-today" class="btn btn-sm ml-2">Undo</button>
-{% endif %}

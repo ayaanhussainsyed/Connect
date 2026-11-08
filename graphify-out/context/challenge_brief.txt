@@ -1,0 +1,190 @@
+Challenge Brief
+Template for challenge partners · Since AI Hackathon 2026 · 6–8 Nov 2026, Turku
+
+
+
+This template helps you define a clear, buildable challenge for the hackathon. Fill in each section below
+— the more concrete the problem and the evaluation criteria, the better the prototypes you receive. You
+can return it to us as is, and we are happy to help shape it into a ready event challenge.
+Questions about the template? Riku Lauttia · riku.lauttia@sinceai.fi · +358 40 938 8820
+
+Challenge partner (company)
+
+  Fonecta Oy · Fonecta Connect (Hitta Connect in Sweden)
+
+
+
+
+01 Challenge Title
+A short, memorable name for the challenge. Example: “Automated support ticket routing.”
+
+  Connect Suggests – Customer Approves
+  Connect ehdottaa – asiakas hyväksyy
+
+
+
+
+02 Problem Statement
+What business or technical problem should be solved? Describe the context, why it matters, and the main
+pain points.
+
+  Fonecta Connect helps local businesses get found online. It keeps their information – opening hours,
+  photos, reviews – accurate and up to date in 35+ channels such as Google, Apple Maps and Bing. The
+  same Nordic SaaS runs in Sweden as Hitta Connect and will soon launch in Norway.
+  Today the customer logs in and does everything themselves: business details, photos, review replies and
+  exception hours. Many forget or have no time. Search results then show old information, and their
+  customers walk to a closed door.
+  Connect is changing direction. It follows each customer’s situation, notices when something needs doing
+  and sends a ready-made suggestion. The customer approves it with one click, and Connect makes the
+  change.
+  Your task: build a working demo of Connect contacting a customer – “Update your opening hours
+  like this.” The demo must show the whole chain:
+   1 Detect. How does Connect conclude that the opening hours need to change? Which data does it use?
+   2 Suggest. Which hours does Connect propose, and why exactly those?
+   3 Contact. The customer gets a message (email, SMS, WhatsApp or another channel) that states the
+     suggestion and the reason clearly.
+   4 Decide. The customer approves, edits or declines. No login needed.
+   5 Apply. The approved change is written to Connect’s backend (Yext API), and the customer gets a
+     confirmation of where the new hours now show.
+
+
+
+
+Since AI ry · Business ID 3593920-2 · Vähä Hämeenkatu 1 A 3, 20500 Turku, Finland                      Page 1
+    Example message
+    Hi Kahvila Aurora! All Saints’ Day is on Saturday 31 Oct. Last year you were open 10–15 that day, but no
+    exception hours have been added this year, so Google now shows your regular Saturday hours (9–18).
+    We suggest: Sat 31 Oct 10–15 [Approve] [Edit] [No thanks]
+
+
+  Think Nordic. Connect is a Nordic product, so Swedish and Norwegian data sources are welcome – build
+  for Finland, Sweden and Norway.
+  Wrong hours also cost visibility: a business with missing or outdated hours can drop out of ‘open now’
+  searches, and search demand may peak around holidays – exactly when hours are most likely to be
+  wrong. The search and view statistics in the dataset can help decide which suggestions matter most.
+
+
+
+
+03 Guiding Question
+One question that focuses the challenge. Example: “How might we use AI to predict equipment failures before
+they happen?”
+
+  How might Connect use AI to notice when a business’s opening hours are about to be wrong,
+  propose the right hours with a clear reason, and get the owner’s approval in one tap – so that
+  no customer walks to a closed door?
+
+
+
+
+04 Recommended AI Approaches Optional
+Any relevant technologies, models or methods — for example NLP for text analysis, classification, knowledge
+graphs, agents, or RAG.
+
+   • Pattern learning: last year’s exceptions, the customer’s own past decisions and what similar
+     businesses nearby do.
+   • Rules + ML with confidence: send only when confident; otherwise ask, or stay quiet.
+   • Visibility-aware priority: use search and view statistics to decide which suggestions to send first.
+   • NLP / LLMs: read reviews (“closed although Google said open”) and write short, clear messages in
+     Finnish, Swedish, Norwegian and English.
+   • Learning from feedback: approve / edit / decline improves the next suggestion; standing permission
+     for recurring changes.
+   • Guardrails: the customer has the last word, nothing is published without approval or standing
+     permission, and every suggestion keeps its reasons (audit trail).
+
+
+
+
+05 Dataset or API Provided If any
+Describe any data or resources you provide: format, a link if ready, and sample size. If none, state what
+builders should expect.
+  At Since AI, challenges can be built with synthetic, anonymized or public data — no personal data is required.
+
+  1 Yext sandbox – one per team (Fonecta)
+  Yext is the backend on which Connect’s own UI is built. Fonecta sets up a separate Yext sandbox
+
+
+
+Since AI ry · Business ID 3593920-2 · Vähä Hämeenkatu 1 A 3, 20500 Turku, Finland                                  Page 2
+  account (test customer) for every team, so teams can explore what Yext enables and demo the real write
+  path. Fonecta delivers each team’s credentials at the start of the hackathon.
+  API docs: https://docs.yext.com/docs/managementapis/introduction/overview-policies-and-conventions/ –
+  the key part is the Knowledge Graph (entities, hours, holidayHours). Sandbox base URL: https://sbx-
+  api.yextapis.com
+  2 Synthetic starter dataset (Since AI): Connect Suggests – Nordic opening-hours simulator v1.1
+  3,000 synthetic Connect customers in Finland, Sweden and Norway with almost three years of history, in
+  Yext API format: regular and holiday hours, exception-hour history, Google user edit suggestions, 60,000
+  reviews (fi/sv/nb/en), daily search and view statistics, shopping-centre hours, anonymised peer
+  benchmarks, a 2025 pilot log of 3,031 suggestions with owner decisions, holiday calendars, school
+  breaks, local events and weather.
+  Includes a local Yext mock API, an owner simulator (approve / edit / decline), a baseline and a scoring
+  script. Code written against the mock works with the sandbox by changing the base URL. Note: the
+  sandbox has the same API but not the same data – its test businesses have no exception-hour history, so
+  use the mock for detection and the sandbox to demo the write path. Download link shared with all teams
+  at kickoff (ZIP, 16 MB). Code MIT, data CC BY 4.0.
+  3 Public data (optional)
+  Holiday calendars, Helsinki LinkedEvents, open weather data (FMI, SMHI, MET Norway), open business
+  registers (PRH, Brønnøysund). No real customer data is used. Keep sandbox credentials out of public
+  repositories and videos.
+
+
+
+
+06 Evaluation Criteria
+How should solutions be judged? What matters most — for example accuracy, scalability, usability, or
+business impact?
+
+   • Suggestion quality: Is the suggestion sensible and backed by data? The scoring script measures it
+     on hidden test data.
+   • Customer experience: Does a busy entrepreneur understand the message at once, and is approving
+     easy?
+   • Reliability: Does the customer always have the last word? How are wrong suggestions prevented?
+   • Extensibility: Which other, similar use cases would the same loop serve? (Automatic posts and
+     review replies are already in production or on the roadmap.)
+   • Learning: Does Connect learn from the customer’s decisions, so that the next suggestion is better
+     after an edit or a decline? Can recurring changes get standing permission – “Handle public holidays
+     from now on without asking”?
+  The demo must show all five steps. A complete chain beats a perfect single step.
+
+
+
+
+07 Submission Format
+What deliverables do you expect? For example a demo video, pitch slides, a code repository, or
+documentation.
+
+   • Working demo of the five steps – live or as a 2–3 minute video.
+   • Code repository with a README: how to run it, data sources used, and third-party libraries and their
+
+
+
+
+Since AI ry · Business ID 3593920-2 · Vähä Hämeenkatu 1 A 3, 20500 Turku, Finland                      Page 3
+     licences (no GPL/AGPL components without Fonecta’s written approval).
+   • Data sources: in the README, name the 3–5 data sources that matter most for your solution, where
+     Connect would get them in production, and what you tried that didn’t work.
+   • Customer messages: include your final customer messages as text.
+   • No history: show how your solution behaves for a customer with no history / no previous actions.
+   • Short pitch deck: problem, solution, how it learns, results, next steps.
+   • Bonus: replace at least one dataset file with a live source and tell us what you learned – coverage,
+     quality, gaps.
+   • Optional: predictions file for the scoring script. A README template and live-source guide are in the
+     dataset’s docs folder.
+
+
+
+
+08 Point of Contact
+Name, email and preferred contact method for questions during the hackathon.
+
+  Inka Gyllenbögel, Business Lead, Fonecta Connect · inka.gyllenbogel@fonecta.com · Discord:
+  inka_76919
+  Tiia Halme, Platform Manager (Yext, sandbox, API) · tiia.halme@fonecta.com · Discord: tiia_fonecta
+  Preferred: the Fonecta channel on the Since AI Discord. On site Fri–Sat; Q&A point at Joki on Sat 9–12
+  and 14:30–18. No Q&A on Sunday.
+
+
+
+
+Since AI ry · Business ID 3593920-2 · Vähä Hämeenkatu 1 A 3, 20500 Turku, Finland                      Page 4
+

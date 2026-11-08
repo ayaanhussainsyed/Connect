@@ -423,9 +423,12 @@ def handle_reply(entity_id: str | None = None, *, card_id: str | None = None, bu
     db = _db(db)
     today = today or date.today()
     card = None
-    if card_id and not card_id.startswith("em:"):
+    if card_id and not card_id.startswith(("em:", "drift:", "rr:")):
         card = season.load_card(card_id, db)
         entity_id = card.entity_id if card else entity_id
+    elif card_id and card_id.startswith(("drift:", "rr:")):
+        offer = db["profile_offers"].find_one({"id": card_id.split(":", 1)[1]}, {"entity_id": 1})
+        entity_id = offer["entity_id"] if offer else entity_id
     elif card_id:
         em = emergency.get(card_id[3:], db)
         entity_id = em["entity_id"] if em else entity_id
@@ -434,7 +437,7 @@ def handle_reply(entity_id: str | None = None, *, card_id: str | None = None, bu
     lang = compose_bridge.contact(entity_id)["lang"]
     if not button_id and text and text.strip().isdigit() and len(text.strip()) == 1:
         button_id, card_id = _digit_button(entity_id, card_id, text.strip(), db)
-        if card_id and not card_id.startswith("em:") and card is None:
+        if card_id and not card_id.startswith(("em:", "drift:", "rr:")) and card is None:
             card = season.load_card(card_id, db)
 
     # 1. Emergencies: offline parser only; the text is never stored or sent to an LLM.
@@ -453,6 +456,15 @@ def handle_reply(entity_id: str | None = None, *, card_id: str | None = None, bu
             except emergency.EmergencyError as ex:
                 return {"handled": False, "action": "EMERGENCY", "reason": str(ex)}
             return {"handled": True, "action": "EMERGENCY", "result": res}
+
+    # 1b. Replies to the weekly-hours and review-reply offers (A13), and owner questions (B10, Ask Connect).
+    from cs import profile_flow
+    if profile_flow.is_offer_card(card_id):
+        return profile_flow.handle_reply(entity_id, card_id, button_id=button_id, text=text, channel=channel, db=db)
+    if not button_id and text and not card_id and (waiting := profile_flow.awaiting_text(entity_id, db)):
+        return profile_flow.handle_reply(entity_id, waiting, text=text, channel=channel, db=db)
+    if not button_id and profile_flow.is_question(text):
+        return profile_flow.answer_question(entity_id, text, channel=channel, db=db)
 
     # 2. Replies about an emergency.
     if card_id and card_id.startswith("em:"):

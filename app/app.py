@@ -69,6 +69,33 @@ BASIS_TEXT = {
 }
 
 
+@app.template_filter("hours_text")
+def hours_text(h: str | None) -> str:
+    """'07:30-13:00' -> '07:30–13:00', 'closed' -> 'Closed', 'REGULAR' -> 'Regular hours'."""
+    if not h:
+        return "–"
+    if h == "closed":
+        return "Closed"
+    if h == "REGULAR":
+        return "Regular hours"
+    return h.replace("-", "–").replace(",", ", ")
+
+
+@lru_cache(maxsize=1)
+def _holiday_names() -> dict[str, str]:
+    c = data.calendar()
+    names = dict(zip(c["day_key"], c["name_en"]))
+    names["INTERDAY"] = "Between Christmas and New Year"
+    return names
+
+
+@app.template_filter("holiday_name")
+def holiday_name(day_key: str | None) -> str:
+    if not day_key:
+        return ""
+    return _holiday_names().get(day_key) or day_key.replace("_", " ").title()
+
+
 @app.context_processor
 def _globals() -> dict:
     return {"source_names": SOURCE_NAMES, "basis_text": BASIS_TEXT}
@@ -190,7 +217,7 @@ def a1():
             ctx["error"] = str(e)
         except KeyError:
             ctx["error"] = "We don't know that business. Pick one from the list."
-    return render_template("a1.html", **ctx)
+    return render_template("ui/a1.html", **ctx)
 
 
 @app.get("/a1/result")
@@ -205,7 +232,7 @@ def a1_result():
     except KeyError:
         ctx, status = {"result": None, "error": "We don't know that business. Pick one from the list."}, 200
         entity_id = d = as_of = None
-    resp = app.make_response((render_template("_a1_result.html", **ctx), status))
+    resp = app.make_response((render_template("ui/_a1_result.html", **ctx), status))
     if entity_id:
         resp.headers["HX-Push-Url"] = url_for("a1") + "?" + urlencode(
             {"entity_id": entity_id, "date": d, "as_of": as_of})
@@ -312,18 +339,18 @@ def suggest_page():
             ctx["error"] = str(e)
         except KeyError:
             ctx["error"] = "We don't know that business. Pick one from the list."
-    return render_template("suggest.html", **ctx)
+    return render_template("ui/suggest.html", **ctx)
 
 
 @app.get("/suggest/result")
 def suggest_result():
     try:
         res = _suggest_ctx(request.args)
-        html = render_template("_suggest_result.html", res=res, error=None)
+        html = render_template("ui/_suggest_result.html", res=res, error=None)
     except BadRequest as e:
-        res, html = None, render_template("_suggest_result.html", res=None, error=str(e))
+        res, html = None, render_template("ui/_suggest_result.html", res=None, error=str(e))
     except KeyError:
-        res, html = None, render_template("_suggest_result.html", res=None,
+        res, html = None, render_template("ui/_suggest_result.html", res=None,
                                           error="We don't know that business. Pick one from the list.")
     resp = app.make_response(html)
     if res:
@@ -334,10 +361,8 @@ def suggest_result():
 
 from app.demo import bp as demo_bp  # noqa: E402
 from app.owner import bp as owner_bp  # noqa: E402
-from app.owner_app import bp as owner_app_bp  # noqa: E402
 from app.webhooks import bp as webhooks_bp  # noqa: E402
 
-app.register_blueprint(owner_app_bp)
 app.register_blueprint(owner_bp)
 app.register_blueprint(demo_bp)
 app.register_blueprint(webhooks_bp)

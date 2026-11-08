@@ -7,6 +7,8 @@ For a sample of dev businesses with at least one row needing a change:
   (closed / regular / special, from the dev labels), re-decide every other date, and score again. The asked date
   itself scores +1 if it needed a change (the owner supplies the hours).
 - "random question": the same with a random date, as a control.
+- "off-card question": what the app asks (``cs.season._question``): the best date that is NOT already a
+  suggestion on the card.
 
     .venv/bin/python scripts/eval_question.py --n 150
 
@@ -76,7 +78,13 @@ def main():
         dates = [d for d, _ in qv]
         rd = dates[rng.integers(0, len(dates))]
         gain_r = card_points(eid, {rd: lab_e.loc[rd, "state"]}, rd, lab_e)
+        r0, dec0 = _decisions(eid, 2026, {})
+        on_card = {row["date"] for (_, row), (_, d) in zip(r0.iterrows(), dec0.iterrows()) if d.action == "SUGGEST"}
+        off = next(((d, v) for d, v in qv if v > 0 and d not in on_card), None)
+        gain_off = card_points(eid, {off[0]: lab_e.loc[off[0], "state"]}, off[0], lab_e) if off else base
         rows.append({"entity_id": eid, "no_question": base, "best_question": gain_q, "random_question": gain_r,
+                     "off_card_question": gain_off, "asked_off_card": off is not None,
+                     "best_date_on_card": ask and best_date in on_card,
                      "asked": ask, "asked_date": best_date, "predicted_value": best_val,
                      "asked_date_gain": own_after - own_before})
         if (i + 1) % 25 == 0:
@@ -87,6 +95,10 @@ def main():
            "points_random_question": float(df.random_question.sum()),
            "gain_per_business_best": float((df.best_question - df.no_question).mean()),
            "gain_per_business_random": float((df.random_question - df.no_question).mean()),
+           "points_off_card_question": float(df.off_card_question.sum()),
+           "gain_per_business_off_card": float((df.off_card_question - df.no_question).mean()),
+           "asked_share_off_card": float(df.asked_off_card.mean()),
+           "best_date_was_on_card_share": float(df.best_date_on_card.mean()),
            "predicted_value_mean": float(df.predicted_value.mean()),
            "gain_on_asked_date": float(df.asked_date_gain.mean()),
            "gain_spillover_other_dates": float((df.best_question - df.no_question - df.asked_date_gain).mean())}

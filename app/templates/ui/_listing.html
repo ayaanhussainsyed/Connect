@@ -1,0 +1,21 @@
+{% if error %}
+<p class="notice notice--error small" role="alert">{{ error }}</p>
+{% else %}
+<p class="small dim">{{ name }} · {{ target }} listing <span class="mono">{{ yid }}</span>{% if yid != entity_id %} (stands in for {{ entity_id }}){% endif %}</p>
+<div class="list mt-1">
+  {% for d, h in holidays.items() %}
+  <div class="list__row"><span>{{ d | nice_date }}</span><span class="hours white">{{ h | hours_text }}</span></div>
+  {% else %}
+  <div class="list__row"><span class="small dim">No holiday hours yet, so every app shows the weekly hours on holidays too.</span></div>
+  {% endfor %}
+  {% if reopen %}<div class="list__row"><span>Reopens</span><span class="hours white">{{ reopen }}</span></div>{% endif %}
+</div>
+<details class="more mt-2">
+  <summary>Weekly hours</summary>
+  <ul class="more__body">
+    {% for d, h in week %}<li><span class="mono">{{ d }}</span>&nbsp;&nbsp;<span class="hours">{{ h | hours_text }}</span></li>{% endfor %}
+  </ul>
+</details>
+<p class="mt-2"><button class="link tiny" hx-post="/demo/clear" hx-vals='{"entity_id": "{{ entity_id }}", "target": "{{ target }}"}'
+   hx-target="#listing" hx-confirm="Clear this business's holiday hours in the {{ target }}? (demo reset)">Reset this business's holiday hours</button></p>
+{% endif %}

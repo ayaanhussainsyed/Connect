@@ -1,0 +1,82 @@
+{% extends "ui/base.html" %}
+{% block title %}Connect Suggests{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<span>Demo · synthetic data · {{ target }}</span>{% endblock %}
+
+{% block content %}
+<div class="split">
+  <section class="stack-lg fade-up">
+    <div>
+      <p class="kicker">Connect Suggests</p>
+      <h1 class="mt-1">Holiday hours that are right, with one tap from the owner.</h1>
+      <p class="sub">Connect checks what Google and the other apps will show on every upcoming special day. If something is wrong, it sends the owner one message. The owner answers with one tap, with no login.</p>
+    </div>
+
+    <form class="stack" hx-post="/demo/check" hx-target="#result" hx-disabled-elt="#check-btn">
+      <label class="field">
+        <span class="field__label">Business</span>
+        <select class="select" name="entity_id" aria-label="Business"
+                onchange="window.location.href='/?b=' + encodeURIComponent(this.value)">
+          {% for b in businesses %}
+          <option value="{{ b.entity_id }}" {{ 'selected' if b.entity_id == entity_id }}>{{ b.name }}{% if b.city %}, {{ b.city }}{% endif %}{% if b.story %} · {{ b.story }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <input type="hidden" name="engine" value="{{ engine }}">
+      <input type="hidden" name="target" value="{{ target }}">
+      <button id="check-btn" class="btn btn--primary btn--block" type="submit">
+        <span>Check {{ name }}</span><span class="btn__arrow" aria-hidden="true">&rarr;</span>
+      </button>
+    </form>
+
+    <div id="result" aria-live="polite"></div>
+
+    <div>
+      <div class="spread"><p class="kicker">What happened</p><a class="link tiny" href="/ops">Full audit trail</a></div>
+      <div id="steps" class="mt-1" hx-get="/demo/steps?entity_id={{ entity_id }}"
+           hx-trigger="load, connect-changed from:body, every 4s"></div>
+    </div>
+
+    <details class="more">
+      <summary>What the listing shows now ({{ target }})</summary>
+      <div id="listing" class="mt-2" hx-get="/demo/entity?entity_id={{ entity_id }}&target={{ target }}"
+           hx-trigger="toggle once from:closest details, connect-changed from:body"></div>
+    </details>
+  </section>
+
+  <aside class="fade-up">
+    <p class="kicker">The owner's phone</p>
+    <div class="phone mt-1">
+      <div class="phone__bar">
+        <span class="phone__who">{{ name }}</span>
+        <span class="tag">owner</span>
+      </div>
+      <div id="thread" class="phone__thread" hx-get="/demo/phone?entity_id={{ entity_id }}"
+           hx-trigger="load, connect-changed from:body, every 4s"></div>
+      <form class="phone__reply" hx-post="/demo/reply" hx-target="#thread"
+            hx-on::after-request="if (event.detail.successful) this.reset()">
+        <input type="hidden" name="entity_id" value="{{ entity_id }}">
+        <label for="reply-text" class="kicker" hidden>Reply as the owner</label>
+        <input id="reply-text" class="input" name="text" autocomplete="off"
+               placeholder="Reply as the owner: ok · 1 · kiinni 26.12. · why…">
+        <button class="btn" type="submit">Send</button>
+      </form>
+    </div>
+    <p class="tiny muted mt-1">Tap a button in a message, or type: a digit, "ok", new hours, "closed today", or a question that starts with why / what / when.</p>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Keep the phone scrolled to the newest message (unless the user scrolled up to read).
+  document.body.addEventListener("htmx:beforeSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread") t.dataset.pinned = (t.scrollHeight - t.scrollTop - t.clientHeight < 40) ? "1" : "0";
+  });
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const t = e.detail.target;
+    if (t && t.id === "thread" && t.dataset.pinned !== "0") t.scrollTop = t.scrollHeight;
+  });
+</script>
+{% endblock %}

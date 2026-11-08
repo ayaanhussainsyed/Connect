@@ -1,0 +1,40 @@
+{% extends "ui/base.html" %}
+{% block title %}What Google shows · Connect Suggests{% endblock %}
+{% block page_class %}page--wide{% endblock %}
+{% block topbar_right %}<a href="/">Console</a><a href="/ops">Messages &amp; audit</a><a href="/suggest">Suggestions</a>{% endblock %}
+
+{% block content %}
+<section class="fade-up">
+  <p class="kicker">For Fonecta staff · step 1</p>
+  <h1 class="mt-1">What customers see on a day, and why</h1>
+  <p class="sub">The hours Google and every other app show on a date, and the rule behind them: closed for good, temporarily closed, a holiday exception, or the regular weekly hours.</p>
+</section>
+
+<form id="a1-form" action="/a1" method="get" class="panel mt-3" hx-get="/a1/result" hx-target="#result">
+  <div class="row-flex" style="align-items: flex-end">
+    <label class="field" style="flex: 2; min-width: 14rem">
+      <span class="field__label">Business</span>
+      <input class="input" id="entity_id" name="entity_id" list="entities" value="{{ form.entity_id }}" required autocomplete="off">
+      <datalist id="entities">
+        {% for o in options %}<option value="{{ o.entity_id }}">{{ o.name }} · {{ o.city }} · {{ o.split }}</option>
+        {% endfor %}
+      </datalist>
+    </label>
+    <label class="field" style="flex: 1; min-width: 10rem">
+      <span class="field__label">Date</span>
+      <input class="input" id="date" name="date" type="date" value="{{ form.date }}" required>
+    </label>
+    <label class="field" style="flex: 1; min-width: 12rem">
+      <span class="field__label">As of</span>
+      <select class="select" id="as_of" name="as_of">
+        {% for value, text in as_of_choices %}<option value="{{ value }}" {% if value == form.as_of %}selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn btn--primary" type="submit">Show <span class="btn__arrow" aria-hidden="true">&rarr;</span></button>
+  </div>
+  <p class="tiny muted mt-1">Type an ID or a name, for example FI-D0001 or Aurora. Tricky cases:
+    {% for eid, d, asof, text in rule_examples %}<a class="link tiny" href="/a1?entity_id={{ eid }}&amp;date={{ d }}&amp;as_of={{ asof }}">{{ text }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+</form>
+
+<div id="result" class="mt-3" aria-live="polite">{% include "ui/_a1_result.html" %}</div>
+{% endblock %}
