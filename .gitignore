@@ -16,3 +16,8 @@ __pycache__/
 .ipynb_checkpoints/
 # os
 .DS_Store
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
